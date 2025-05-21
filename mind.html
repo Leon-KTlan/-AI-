@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindGuard - 智能伙伴 V2</title>
+    <script src="https://cdn.tailwindcss.com/3.4.3"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/framer-motion/11.2.10/motion.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* 基本字体和背景 */
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f0f2f5; /* 更现代的浅灰色背景 */
+            color: #1a202c; /* 深灰色文字，对比更清晰 */
+            overscroll-behavior-y: contain; /* 防止页面滚动传递到浏览器导航 */
+        }
+
+        /* Bento Box 基础样式 */
+        .bento-box {
+            background-color: rgba(255, 255, 255, 0.85); /* 轻微透明的白色背景 */
+            backdrop-filter: blur(12px) saturate(150%); /* 增加饱和度使毛玻璃效果更明显 */
+            border-radius: 24px; /* 更圆润的边角 */
+            padding: clamp(1.5rem, 4vw, 2.5rem); /* 响应式内边距 */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05), 0 16px 32px rgba(0,0,0,0.05); /* 更柔和的阴影 */
+            transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid rgba(226, 232, 240, 0.5); /* 细微边框 */
+        }
+
+        .bento-box:hover {
+            transform: translateY(-6px) scale(1.015);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.07), 0 24px 48px rgba(0,0,0,0.07);
+        }
+
+        /* 超大中文标题 */
+        .highlight-text-cn {
+            font-size: clamp(2.25rem, 6vw, 4rem); /* 响应式超大字体 */
+            font-weight: 800; /* 更粗的字重 */
+            color: #2c5282; /* 深蓝，更沉稳 */
+            line-height: 1.15;
+            letter-spacing: -0.02em; /* 轻微字距调整 */
+        }
+
+        /* 点缀英文小字 */
+        .highlight-text-en {
+            font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+            font-weight: 500;
+            color: #718096; /* 中灰色 */
+            text-transform: uppercase;
+            letter-spacing: 0.075em;
+            display: block;
+            margin-top: 0.35rem;
+        }
+        
+        /* 主要按钮样式 */
+        .btn-primary {
+            background-image: linear-gradient(to right, #3b82f6 0%, #2563eb 50%, #3b82f6 100%);
+            background-size: 200% auto;
+            color: white;
+            padding: 0.85rem 1.75rem;
+            border-radius: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 18px -7px rgba(59, 130, 246, 0.6);
+            border: none;
+        }
+        .btn-primary:hover {
+            background-position: right center; /* 渐变动画 */
+            transform: translateY(-3px);
+            box-shadow: 0 7px 22px -7px rgba(59, 130, 246, 0.8);
+        }
+
+        /* 次要/特色按钮 (例如MBTI按钮) */
+        .btn-special {
+            background-image: linear-gradient(to right, #10b981 0%, #059669 50%, #10b981 100%);
+            background-size: 200% auto;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 18px -7px rgba(16, 185, 129, 0.5);
+            border: none;
+        }
+        .btn-special:hover {
+            background-position: right center;
+            transform: translateY(-3px);
+            box-shadow: 0 7px 22px -7px rgba(16, 185, 129, 0.7);
+        }
+        
+        /* 聊天消息样式 */
+        .chat-messages {
+            max-height: calc(100vh - 380px); /* 动态计算最大高度 */
+            min-height: 300px; /* 保证最小高度 */
+            overflow-y: auto;
+            padding-right: 12px; /* 为滚动条留出空间 */
+            scroll-behavior: smooth;
+        }
+        .message { padding: 14px 20px; border-radius: 22px; line-height: 1.55; font-size: 0.98rem; max-width: 85%; word-break: break-word; }
+        .bot-message { background-color: #e0e7ff; /* 淡紫色背景 */ color: #3730a3; border-bottom-left-radius: 6px; align-self: flex-start; }
+        .user-message { background-color: #3b82f6; /* 主题蓝 */ color: white; border-bottom-right-radius: 6px; align-self: flex-end; }
+        .message-time { font-size: 0.7rem; opacity: 0.65; margin-top: 6px; text-align: right; }
+        .thinking-indicator .message-content { font-style: italic; color: #4a5568; }
+
+        /* 自定义滚动条 (Webkit) */
+        .chat-messages::-webkit-scrollbar { width: 7px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .chat-messages::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+        /* 模态框样式 */
+        .modal {
+            background: rgba(17, 24, 39, 0.6); /* 更深的半透明背景 */
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background: #ffffff;
+            padding: clamp(1.5rem, 5vw, 3rem);
+            border-radius: 28px; /* 更大的圆角 */
+            width: 90%;
+            max-width: 750px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            border: 1px solid rgba(209, 213, 219, 0.3);
+        }
+        .report-card {
+            background: #f9fafb; /* 非常浅的灰色卡片背景 */
+            padding: 1.75rem;
+            border-radius: 20px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+         .report-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+        }
+        .report-card h3 { color: #2563eb; margin-bottom: 1rem; font-size: 1.3rem; font-weight: 700; }
+        .report-card p { color: #374151; line-height: 1.65; font-size: 0.95rem; }
+        .hospital-link { color: #2563eb; font-weight: 600; }
+
+        /* 科技感高亮边框/背景 (可选) */
+        .tech-glow {
+            position: relative;
+        }
+        .tech-glow::before, .tech-glow::after {
+            content: '';
+            position: absolute;
+            left: -2px; top: -2px;
+            background: linear-gradient(45deg, #3b82f6, #10b981, #ef4444, #8b5cf6, #3b82f6);
+            background-size: 400%;
+            width: calc(100% + 4px);
+            height: calc(100% + 4px);
+            z-index: -1;
+            animation: techGlowAnimation 20s linear infinite;
+            border-radius: inherit; /* 继承父元素的圆角 */
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .bento-box:hover .tech-glow::before { opacity: 0.3; } /* 悬停时显示辉光 */
+        @keyframes techGlowAnimation { 0% { background-position: 0 0; } 50% { background-position: 400% 0; } 100% { background-position: 0 0; } }
+        
+        /* 输入区域样式 */
+        .chat-input-area {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1.25rem;
+            background-color: rgba(255, 255, 255, 0.7); /* 轻微透明 */
+            backdrop-filter: blur(8px);
+            border-bottom-left-radius: 24px; /* 匹配父容器圆角 */
+            border-bottom-right-radius: 24px;
+        }
+        .chat-input-area textarea {
+            border-radius: 16px;
+            padding: 0.85rem 1.15rem;
+            min-height: 58px; /* 固定初始高度 */
+            max-height: 180px; /* 限制最大高度 */
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+        }
+        .chat-input-area textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.25);
+            background-color: white;
+        }
+        .chat-input-area button {
+            min-width: 58px; height: 58px; border-radius: 16px; /* 统一尺寸 */
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .chat-input-area .btn-special { font-size: 0.9rem; padding-left: 1.2rem; padding-right: 1.2rem; }
+
+        /* 使Framer Motion动画更平滑 */
+        [data-motion] { will-change: transform, opacity; }
+
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-3 md:p-6 selection:bg-blue-500 selection:text-white">
+
+    <div id="app-container" class="w-full max-w-7xl mx-auto">
+        
+        <header class="py-10 md:py-16 text-center" data-motion data-initial='{ "opacity": 0, "y": -30 }' data-animate='{ "opacity": 1, "y": 0 }' data-transition='{ "duration": 0.6, "ease": "easeOut" }'>
+            <h1 class="text-5xl md:text-7xl font-extrabold text-gray-800 tracking-tight">
+                Mind<span class="text-blue-600">Guard</span>
+                <span class="block text-xl md:text-2xl font-medium text-gray-500 mt-3">智能伙伴 <span class="font-sans text-gray-400">|</span> Your AI Companion</span>
+            </h1>
+            <p class="mt-5 text-gray-600 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+                随时倾听，给予支持与洞察。探索自我，与 MindGuard 一同成长。
+                <span class="block text-xs text-gray-400 mt-2">Always listening, offering support and insights. Explore yourself and grow with MindGuard.</span>
+            </p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-7">
+            <div class="bento-box lg:col-span-2 min-h-[650px] flex flex-col tech-glow" data-motion data-initial='{ "opacity": 0, "y": 40 }' data-animate='{ "opacity": 1, "y": 0 }' data-transition='{ "duration": 0.6, "delay": 0.15, "ease": "easeOut" }'>
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-2xl md:text-3xl font-bold text-gray-700">
+                        疗愈对话 <span class="text-sm font-light text-gray-500 ml-1.5 align-middle">HEALING CHAT</span>
+                    </h2>
+                    <i class="fas fa-comments text-blue-500 text-3xl opacity-80"></i>
+                </div>
+                <div class="chat-messages flex-1 space-y-4 mb-5 pr-1" id="chatMessages">
+                    <div class="message bot-message">
+                        <div class="message-content">您好，我是您的AI疗愈助手 MindGuard。有什么想和我分享或者需要帮助的吗？很高兴能与您交流。</div>
+                        <div class="message-time"></div> </div>
+                </div>
+                <div class="chat-input-area mt-auto flex items-end gap-3">
+                    <textarea id="userInput" class="flex-1 resize-none" placeholder="在这里输入您的想法或感受..." rows="1"></textarea>
+                    <button class="btn-primary" id="sendButton" title="发送消息">
+                        <i class="fas fa-paper-plane text-xl"></i>
+                    </button>
+                    <button class="btn-special" id="mbtiButton" title="开始MBTI性格探索">
+                        <i class="fas fa-brain mr-2 opacity-90"></i> MBTI探索
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-5 md:space-y-7 lg:col-span-1">
+                <div class="bento-box tech-glow" data-motion data-initial='{ "opacity": 0, "x": 40 }' data-animate='{ "opacity": 1, "x": 0 }' data-transition='{ "duration": 0.6, "delay": 0.3, "ease": "easeOut" }'>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">
+                            个性洞察 <span class="text-xs font-light text-gray-500 ml-1 align-middle">PERSONALITY</span>
+                        </h2>
+                        <i class="fas fa-user-astronaut text-green-500 text-3xl opacity-80"></i>
+                    </div>
+                    <div id="mbtiResultArea" class="text-center py-5">
+                        <p class="text-gray-500 text-sm mb-2">完成对话探索后，您的MBTI倾向将显示在此。</p>
+                        <span class="highlight-text-cn text-green-600" id="mbti-type-display">----</span>
+                        <span class="highlight-text-en text-green-500" id="mbti-type-label-en">YOUR TYPE</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-3 text-center">
+                        *MBTI结果由AI分析对话生成，仅供参考。
+                    </p>
+                </div>
+
+                <div class="bento-box" data-motion data-initial='{ "opacity": 0, "x": 40 }' data-animate='{ "opacity": 1, "x": 0 }' data-transition='{ "duration": 0.6, "delay": 0.45, "ease": "easeOut" }'>
+                     <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">
+                            咨询报告 <span class="text-xs font-light text-gray-500 ml-1 align-middle">AI REPORT</span>
+                        </h2>
+                        <i class="fas fa-file-medical-alt text-purple-500 text-3xl opacity-80"></i>
+                    </div>
+                    <p class="text-gray-600 text-sm mb-5">根据您的对话内容，为您生成一份简要的AI分析报告。</p>
+                    <button id="reportBtn" class="w-full btn-primary bg-purple-600 hover:bg-purple-700 shadow-purple-400/40 hover:shadow-purple-500/60">
+                        <i class="fas fa-chart-line mr-2"></i> 生成分析报告
+                    </button>
+                     <p class="text-xs text-gray-400 mt-4 text-center">
+                        *报告由AI生成，非专业诊断，仅供参考。
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center py-10 md:py-16 mt-8 border-t border-gray-200/80" data-motion data-initial='{ "opacity": 0 }' data-animate='{ "opacity": 1 }' data-transition='{ "duration": 0.5, "delay": 0.6, "ease": "easeOut" }'>
+            <p class="text-sm text-gray-500">MindGuard &copy; <span id="currentYear"></span> | 智能对话伙伴</p>
+            <p class="text-xs text-gray-400 mt-2 leading-relaxed max-w-md mx-auto">
+                注意：本应用提供的AI对话与分析不构成专业心理咨询或治疗建议。如有严重心理健康困扰，请务必寻求专业人士帮助。
+            </p>
+             <p class="text-xs text-gray-400 mt-1">
+                Disclaimer: This is not professional psychotherapy. For serious mental health issues, please consult a professional.
+            </p>
+        </footer>
+    </div>
+
+    <div id="reportModal" class="modal fixed inset-0 z-[100] hidden items-center justify-center p-4 transition-opacity duration-300 ease-out opacity-0">
+        <div class="modal-content overflow-y-auto max-h-[90vh] w-full transition-transform duration-300 ease-out scale-95" data-motion-modal-content>
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+                <h2 class="text-3xl font-bold text-blue-600">
+                    AI分析报告 <span class="text-base font-normal text-gray-500 align-middle">Analysis</span>
+                </h2>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-4xl leading-none -mt-2 transition-colors">&times;</button>
+            </div>
+            <div class="report-grid grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                <div class="report-card">
+                    <h3 class="flex items-center"><i class="fas fa-user-circle mr-3 text-xl text-blue-500"></i>用户画像 <span class="text-xs font-light ml-1">PROFILE</span></h3>
+                    <p id="report-user-profile" class="mt-2">报告生成中...</p>
+                </div>
+                <div class="report-card">
+                    <h3 class="flex items-center"><i class="fas fa-heart-pulse mr-3 text-xl text-red-500"></i>心理状态评估 <span class="text-xs font-light ml-1">MENTAL STATE</span></h3>
+                    <p id="report-mental-state" class="mt-2">报告生成中...</p>
+                </div>
+                <div class="report-card">
+                    <h3 class="flex items-center"><i class="fas fa-grin-beam mr-3 text-xl text-yellow-500"></i>情感分析 <span class="text-xs font-light ml-1">EMOTIONS</span></h3>
+                    <p id="report-emotion-analysis" class="mt-2">报告生成中...</p>
+                </div>
+                <div class="report-card">
+                    <h3 class="flex items-center"><i class="fas fa-lightbulb-on mr-3 text-xl text-green-500"></i>AI建议 <span class="text-xs font-light ml-1">SUGGESTIONS</span></h3>
+                    <p id="report-suggestions" class="mt-2">报告生成中...</p>
+                    <a href="https://www.xinli001.com/" target="_blank" class="hospital-link block mt-4 hover:underline">
+                       <i class="fas fa-external-link-alt mr-1.5"></i> 访问壹心理获取专业帮助
+                    </a>
+                </div>
+            </div>
+             <p class="text-xs text-gray-500 mt-8 text-center">
+                *本报告由AI根据对话记录分析生成，仅供参考，不能替代专业医疗诊断。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // --- Framer Motion related variables (will be defined in DOMContentLoaded) ---
+        let fm; // Will hold motion factory, e.g., window.Motion.motion
+        let AnimatePresence; // Will hold AnimatePresence component/function
+
+        function applyMotionAnimations() {
+            // Check if Framer Motion's main animation function 'fm.animate' is available
+            if (!fm || typeof fm.animate !== 'function') {
+                console.error("Framer Motion 'fm.animate' is not initialized or not a function. Animations will not apply correctly.");
+                // Fallback for elements that were supposed to be animated: ensure they are visible
+                document.querySelectorAll('[data-motion]').forEach(el => {
+                    el.style.opacity = 1;
+                    el.style.transform = 'none'; // Reset any initial transform states
+                });
+                return;
+            }
+            document.querySelectorAll('[data-motion]').forEach(el => {
+                try {
+                    // Attempt to parse animation properties from data attributes
+                    const initial = el.dataset.initial ? JSON.parse(el.dataset.initial.replace(/'/g, '"')) : { opacity: 0 }; // Default initial
+                    const animate = el.dataset.animate ? JSON.parse(el.dataset.animate.replace(/'/g, '"')) : { opacity: 1 }; // Default animate
+                    const transition = el.dataset.transition ? JSON.parse(el.dataset.transition.replace(/'/g, '"')) : { duration: 0.5 }; // Default transition
+                    
+                    // Set initial styles directly for elements not yet managed by Framer Motion
+                    // This helps avoid a flash if Framer Motion takes a moment to kick in.
+                    Object.keys(initial).forEach(key => {
+                        if (key === 'opacity') {
+                            el.style.opacity = initial[key];
+                        } else {
+                            // Basic transform handling for y and x, append 'px' if number
+                            const value = initial[key];
+                            const unit = (typeof value === 'number' && (key === 'y' || key === 'x')) ? 'px' : '';
+                            el.style.transform = `${el.style.transform || ''} ${key}(${value}${unit})`;
+                        }
+                    });
+                    
+                    // Use Framer Motion to animate from initial to animate state
+                    setTimeout(() => { // Small delay to ensure initial styles are rendered
+                         fm.animate(el, animate, transition);
+                    }, 50);
+
+                } catch (e) {
+                    console.error("Failed to parse motion attributes for element or apply animation:", el, e);
+                    // Fallback: simple opacity transition if parsing or Framer Motion fails
+                    el.style.opacity = 0; // Ensure it starts from 0 if not set
+                    setTimeout(() => {
+                        el.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                        el.style.opacity = 1;
+                        el.style.transform = 'none'; // Reset transforms
+                    }, 50);
+                }
+            });
+        }
+        
+        // --- Constants and Configuration ---
+        const DEEPSEEK_API_KEY = 'deepseekAPIkey'; 
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+        const mbtiScenariosData = [ { "id": "social_and_energy_scenario_1", "name": "社交与精力情景", "description": "这组问题旨在了解您在社交互动中如何获取和消耗精力。", "questions": [ { "q_id": "se_q1", "text": "想象一下，一个忙碌的工作周结束后，您感到有些疲惫。您是更倾向于参加一个朋友的聚会，通过和大家交流来放松和恢复精力，还是更喜欢独自在家，安静地做自己喜欢的事情来充电？请分享您的选择和原因。", "mbti_aspect": "E_vs_I" }, { "q_id": "se_q2", "text": "当您需要解决一个复杂问题时，您是更喜欢和团队成员一起讨论、头脑风暴，从不同的观点中获得启发，还是更倾向于自己独立思考，深入钻研？为什么？", "mbti_aspect": "E_vs_I, T_vs_F" }, { "q_id": "se_q3", "text": "在和不太熟悉的人交流时，您通常是能很快找到话题并主动开启对话，还是更喜欢先听对方说，慢慢加入讨论？", "mbti_aspect": "E_vs_I" }, { "q_id": "se_q4", "text": "如果有一个机会去一个全新的环境，认识一群新朋友，您会感到兴奋和期待，还是会有些犹豫和不安？", "mbti_aspect": "E_vs_I, J_vs_P" } ] }, { "id": "information_gathering_scenario_2", "name": "信息收集情景", "description": "这组问题关注您如何感知和处理信息。", "questions": [ { "q_id": "ig_q1", "text": "当您接触到一个全新的事物或概念时，您是更倾向于关注它的具体细节、实际用途和现状，还是更喜欢去理解它的整体规律、发展趋势和潜在意义？请举例说明。", "mbti_aspect": "S_vs_N" }, { "q_id": "ig_q2", "text": "在阅读一份报告或文章时，您是更容易注意到其中的事实、数据和具体的例子，还是更容易看到作者的观点、文章的结构和潜在的含义？", "mbti_aspect": "S_vs_N" }, { "q_id": "ig_q3", "text": "谈到未来，您是更倾向于基于当前已有的信息和经验来预测和规划，还是更喜欢畅想各种可能性，即使它们目前看起来不太现实？", "mbti_aspect": "S_vs_N" }, { "q_id": "ig_q4", "text": "您在描述一件事情时，是更喜欢按照事情发生的先后顺序，详细描述每一个环节，还是更喜欢跳跃式地讲述，抓住重点和核心思想？", "mbti_aspect": "S_vs_N, J_vs_P" } ] }, { "id": "decision_making_scenario_3", "name": "决策与判断情景", "description": "这组问题旨在了解您在做决定和评价事物时更看重什么。", "questions": [ { "q_id": "dm_q1", "text": "当您需要做一个重要决定时，您是更倾向于依赖逻辑分析、权衡利弊、追求客观和公平，还是更倾向于考虑自己的价值观、对他人的影响以及是否符合您的感受？请描述一个您最近做重要决定的过程。", "mbti_aspect": "T_vs_F" }, { "q_id": "dm_q2", "text": "在评价一个观点或行为时，您是更容易指出其逻辑上的不足或事实错误，还是更容易关注它是否合理、是否符合您的价值观或是否考虑了人情？", "mbti_aspect": "T_vs_F" }, { "q_id": "dm_q3", "text": "当您和别人意见不一致时，您是更倾向于直接表达自己的观点，通过辩论来说服对方，还是更倾向于寻找共同点，试图理解对方的感受，维护和谐的关系？", "mbti_aspect": "T_vs_F, E_vs_I" }, { "q_id": "dm_q4", "text": "如果您的朋友遇到了一个难题，向您寻求建议。您是更倾向于帮助他们分析问题、提供解决方案，还是更倾向于倾听他们的感受，给予情感上的支持？", "mbti_aspect": "T_vs_F" }, { "q_id": "dm_q5", "text": "在做决定后，您是会感到事情尘埃落定，可以继续前进了，还是会继续思考是否有其他更好的选择？", "mbti_aspect": "J_vs_P" } ] }, { "id": "lifestyle_and_planning_scenario_4", "name": "生活方式与规划情景", "description": "这组问题探索您在处理日常事务和应对变化时的偏好。", "questions": [ { "q_id": "lp_q1", "text": "在开始一个项目或任务时，您是更喜欢先制定一个详细的计划和时间表，然后按部就班地执行，还是更喜欢先大致确定方向，然后在过程中根据情况灵活调整？", "mbti_aspect": "J_vs_P" }, { "q_id": "lp_q2", "text": "您对突发情况或计划外的变化通常持什么态度？是感到不安和不适，还是觉得这是一种挑战或机会？", "mbti_aspect": "J_vs_P" }, { "q_id": "lp_q3", "text": "在日常生活中，您是更喜欢把事情安排得井井有条，提前做好准备，还是更喜欢保持弹性，根据当下的心情和情况来决定做什么？", "mbti_aspect": "J_vs_P" }, { "q_id": "lp_q4", "text": "当您完成一个项目或任务时，您是会感到很满意，喜欢把事情彻底完成并告一段落，还是即使完成了，也会觉得还有改进的空间，或者对新的可能性保持开放？", "mbti_aspect": "J_vs_P, S_vs_N" } ] }, { "id": "mixed_preference_scenario_5", "name": "混合偏好情景", "description": "这组问题结合了不同维度，提供更全面的视角。", "questions": [ { "q_id": "mp_q1", "text": "当您感到压力时，您是更倾向于通过和朋友倾诉、寻求外部支持来缓解，还是更倾向于自己一个人静静地思考、分析原因并寻找内在的解决方案？", "mbti_aspect": "E_vs_I, T_vs_F" }, { "q_id": "mp_q2", "text": "在学习新技能时，您是更喜欢通过实践操作、摸索经验来掌握，还是更喜欢先理解背后的原理和理论，然后进行系统学习？", "mbti_aspect": "S_vs_N" }, { "q_id": "mp_q3", "text": "如果有一个机会参与一个全新的、充满不确定性的项目，您会感到兴奋并跃跃欲试，还是会感到犹豫，更喜欢选择那些有明确目标和计划的项目？", "mbti_aspect": "S_vs_N, J_vs_P" }, { "q_id": "mp_q4", "text": "您认为自己在做决定时，是更偏向于快速做出判断并执行，还是更偏向于花时间收集信息、考虑各种可能性后再做决定？", "mbti_aspect": "J_vs_P, S_vs_N" }, { "q_id": "mp_q5", "text": "在与他人合作时，您是更倾向于关注任务的逻辑和效率，确保按时完成，还是更倾向于关注团队成员的感受和协作氛围，确保大家都能舒适地工作？", "mbti_aspect": "T_vs_F, E_vs_I" } ] } ];
+
+        // --- State Variables ---
+        let isMbtiTestActive = false;
+        let currentMbtiQuestionIndex = 0;
+        let mbtiScores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+        let currentMbtiQuestionText = "";
+        let currentMbtiAspect = "";
+        let allMbtiQuestions = [];
+        let conversationHistory = []; 
+
+        // --- DOM Elements ---
+        let chatMessagesContainer, userInput, sendButton, reportBtn, reportModal, closeModalBtn, mbtiButton, mbtiResultDisplay, mbtiResultLabelEn;
+
+        // --- Utility Functions ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function getCurrentTime() {
+            return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // --- API Call Function ---
+        async function callDeepSeekAPI(promptContent, history = [], requestType = 'chat', mbtiSystemPrompt = '') {
+            let messages = [];
+            let systemContent = '';
+    
+            if (requestType === 'mbti_analysis') {
+                systemContent = mbtiSystemPrompt;
+            } else if (requestType === 'chat') {
+                 systemContent = `你是一个富有同情心、支持性、非评判性的AI心理疗愈助手 MindGuard。
+你的核心职责是：
+1. 专注倾听用户的表达。
+2. 提供情绪上的支持、理解和肯定。
+3. 帮助用户澄清自己的感受和想法，但不进行诊断或给出专业治疗建议。
+4. 引导用户思考积极的、非专业的应对思路或视角。
+5. 保持温暖、耐心、尊重的沟通态度。
+6. 使用共情和鼓励性的语言。
+7. **重要声明：** 你不是专业心理医生或咨询师。如果用户表现出严重的心理困扰或危机，或者明确需要专业帮助，请委婉但清晰地建议用户寻求专业心理咨询师或医生的帮助。
+8. 避免评判用户的想法、感受或行为。
+9. **回复风格：** 语言应自然、流畅、简洁明了，突出核心信息，避免过于冗长或机械化的回复。根据对话情境，可以适当加入一些生活化的、温暖的表达。`;
+            } else if (requestType === 'report') {
+                 systemContent = `你是一位专业的AI心理分析助手。你的任务是根据提供的用户与AI疗愈助手的对话记录，生成一份结构化的、客观的AI分析报告。报告应包含以下四个部分，请使用清晰的标题（例如：“1. 用户画像：”，“2. 心理状态评估：”等）来组织内容，每个部分用换行符分隔：
+1.  **用户画像总结：** 基于对话内容推断用户的沟通风格、主要关注点、表达的情绪模式等。
+2.  **心理状态评估：** 根据对话推断用户当前可能的情绪状态（如平静、焦虑、积极等），并简述判断依据。
+3.  **情感分析概要：** 总结对话中表现出的主要积极或消极的情感倾向或主题词。
+4.  **AI建议：** 提出1-2条具体的、积极的、非诊断性的通用性建议，例如可以尝试的放松技巧、思考角度，或在必要时提示寻求专业心理咨询的重要性。
+请确保报告语言专业、客观、中立且富有同情心。避免使用绝对性或诊断性语言。`;
+            }
+
+            if (systemContent) {
+                messages.push({ role: 'system', content: systemContent });
+            }
+    
+            const historyToAdd = requestType === 'mbti_analysis' ? history.slice(-6) : history.slice(-12);
+            messages = messages.concat(historyToAdd);
+    
+            messages.push({ role: 'user', content: promptContent });
+    
+            try {
+                const response = await fetch(DEEPSEEK_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat", 
+                        messages: messages,
+                        temperature: requestType === 'mbti_analysis' ? 0.25 : (requestType === 'report' ? 0.45 : 0.65), 
+                        top_p: 0.9,
+                        frequency_penalty: 0.15, 
+                        stream: false 
+                    })
+                });
+    
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error('API request failed:', response.status, errorBody);
+                    return `抱歉，AI服务暂时遇到问题 (${response.status})。请检查API密钥或稍后再试。`;
+                }
+    
+                const data = await response.json();
+    
+                if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+                     return data.choices[0].message.content.trim();
+                } else {
+                     console.error('Unexpected API response format:', data);
+                     return "抱歉，AI回复的格式无法识别，请稍后再试。";
+                }
+    
+            } catch (error) {
+                console.error('Error calling DeepSeek API:', error);
+                return "抱歉，连接AI服务时网络出错。请检查您的网络连接并重试。";
+            }
+        }
+
+        // --- UI Manipulation Functions ---
+        function addMessageToUI(message, type) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = `message ${type}-message flex flex-col opacity-0 translate-y-2`; 
+            
+            const messageContentDiv = document.createElement('div');
+            messageContentDiv.className = 'message-content';
+
+            if (type === 'bot' || type === 'bot-thinking') {
+                messageContentDiv.innerHTML = message.replace(/\n/g, '<br>');
+            } else {
+                messageContentDiv.textContent = message; 
+            }
+            messageWrapper.appendChild(messageContentDiv);
+
+            if (type !== 'bot-thinking') {
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = getCurrentTime();
+                messageWrapper.appendChild(timeDiv);
+
+                if (type === 'user' || type === 'bot') {
+                     conversationHistory.push({ role: type === 'user' ? 'user' : 'assistant', content: message });
+                }
+            } else {
+                messageWrapper.classList.add('thinking-indicator');
+            }
+
+            chatMessagesContainer.appendChild(messageWrapper);
+            if (fm && typeof fm.animate === 'function') { // Check if fm.animate is available
+                fm.animate(messageWrapper, { opacity: 1, y: 0 }, { duration: 0.3, ease: "easeOut" });
+            } else { // Fallback if Framer Motion not loaded
+                messageWrapper.style.opacity = 1;
+                messageWrapper.style.transform = 'translateY(0)';
+            }
+            
+            setTimeout(() => {
+                chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+            }, 50);
+            return messageWrapper;
+        }
+
+        // --- MBTI Logic ---
+        function initializeMbtiQuestions() {
+            allMbtiQuestions = [];
+            mbtiScenariosData.forEach(scenario => {
+                scenario.questions.forEach(question => {
+                    allMbtiQuestions.push(question);
+                });
+            });
+            shuffleArray(allMbtiQuestions); 
+            console.log("MBTI Questions initialized and shuffled:", allMbtiQuestions.length, "questions.");
+        }
+
+        function startMbtiTest() {
+            if (isMbtiTestActive) {
+                addMessageToUI("MBTI性格探索已经在进行中。如果您想重新开始，请先完成当前测试或明确告知。", 'bot');
+                return;
+            }
+            isMbtiTestActive = true;
+            currentMbtiQuestionIndex = 0; 
+            mbtiScores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 }; 
+            mbtiResultDisplay.textContent = "----";
+            mbtiResultLabelEn.textContent = "TEST IN PROGRESS";
+            addMessageToUI("好的，我们开始MBTI性格倾向探索。请根据您的真实感受回答以下几个问题。", 'bot');
+            initializeMbtiQuestions();
+            askNextMbtiQuestion();
+        }
+
+        function askNextMbtiQuestion() {
+            if (currentMbtiQuestionIndex < allMbtiQuestions.length) {
+                const question = allMbtiQuestions[currentMbtiQuestionIndex];
+                currentMbtiQuestionText = question.text;
+                currentMbtiAspect = question.mbti_aspect;
+                setTimeout(() => {
+                    addMessageToUI(question.text, 'bot');
+                }, isMbtiTestActive && currentMbtiQuestionIndex > 0 ? 500 : 100); 
+            } else {
+                calculateAndShowMbtiResult();
+            }
+        }
+        
+        function parseAndRecordMbtiTendency(responseText, aspect) {
+            const aspectPairs = aspect.split(',').map(s => s.trim()); 
+            console.log(`Parsing MBTI response: "${responseText}" for aspects: "${aspect}"`);
+        
+            const judgments = responseText.split('。').map(j => j.trim()).filter(j => j.length > 0);
+        
+            aspectPairs.forEach(pair => { 
+                const [pole1, pole2] = pair.split('_vs_'); 
+                let identifiedPole = null;
+        
+                for (const judgment of judgments) { 
+                    const multiDimMatch = judgment.match(new RegExp(`^${pole1}/${pole2}:\\s*倾向(${pole1}|${pole2})$`, 'i'));
+                    if (multiDimMatch) {
+                        identifiedPole = multiDimMatch[1].toUpperCase();
+                        break;
+                    }
+                    const singleDimMatch = judgment.match(new RegExp(`^倾向(${pole1}|${pole2})$`, 'i'));
+                    if (singleDimMatch) {
+                        identifiedPole = singleDimMatch[1].toUpperCase();
+                        break;
+                    }
+                }
+        
+                if (identifiedPole === pole1) {
+                    mbtiScores[pole1]++;
+                } else if (identifiedPole === pole2) {
+                    mbtiScores[pole2]++;
+                } else {
+                    console.warn(`Aspect: ${pair}, Tendency not clearly parsed from: "${responseText}". Judgments: ${judgments.join('; ')}. Trying direct keyword match.`);
+                    const upperResponse = responseText.toUpperCase();
+                    const pole1Count = (upperResponse.match(new RegExp(pole1, 'g')) || []).length;
+                    const pole2Count = (upperResponse.match(new RegExp(pole2, 'g')) || []).length;
+
+                    if (pole1Count > pole2Count && upperResponse.includes(`倾向${pole1}`)) mbtiScores[pole1]++;
+                    else if (pole2Count > pole1Count && upperResponse.includes(`倾向${pole2}`)) mbtiScores[pole2]++;
+                    else if (upperResponse.includes(pole1)) mbtiScores[pole1]++; 
+                    else if (upperResponse.includes(pole2)) mbtiScores[pole2]++;
+                    else console.warn(`Fallback for ${pair} also failed.`);
+                }
+                console.log(`Scores after ${pair}:`, JSON.stringify(mbtiScores));
+            });
+        }
+
+        function calculateAndShowMbtiResult() {
+            let mbtiType = '';
+            mbtiType += mbtiScores.E >= mbtiScores.I ? 'E' : 'I';
+            mbtiType += mbtiScores.S >= mbtiScores.N ? 'S' : 'N';
+            mbtiType += mbtiScores.T >= mbtiScores.F ? 'T' : 'F';
+            mbtiType += mbtiScores.J >= mbtiScores.P ? 'J' : 'P';
+
+            addMessageToUI(`根据我们的对话，您的MBTI倾向初步判断为：<strong class="text-blue-600 text-lg">${mbtiType}</strong>。这有助于我们更好地交流。请记住，这仅为参考，更准确的评估建议进行更全面的测试或咨询专业人士。`, 'bot');
+            mbtiResultDisplay.textContent = mbtiType;
+            mbtiResultDisplay.classList.remove('text-green-600');
+            mbtiResultDisplay.classList.add('text-blue-600'); 
+            mbtiResultLabelEn.textContent = "YOUR ESTIMATED TYPE";
+            isMbtiTestActive = false; 
+            currentMbtiQuestionText = ""; 
+            currentMbtiAspect = "";
+        }
+
+        // --- Chat and Report Logic ---
+        async function handleUserMessage() {
+            const userMessage = userInput.value.trim();
+            if (userMessage === '') return;
+
+            addMessageToUI(userMessage, 'user');
+            userInput.value = ''; 
+            userInput.style.height = '58px'; 
+            userInput.dispatchEvent(new Event('input')); 
+
+            const thinkingIndicator = addMessageToUI("AI 正在思考中...", 'bot-thinking');
+
+            try {
+                let botResponse;
+                if (isMbtiTestActive) {
+                    if(thinkingIndicator) thinkingIndicator.querySelector('.message-content').innerHTML = "AI 正在分析您的倾向...";
+
+                    const systemPromptForMbti = `你正在主持MBTI测试。基于用户的回答，判断其在指定维度上的倾向。
+当前问题："${currentMbtiQuestionText}" (考察维度: ${currentMbtiAspect})
+用户回答："${userMessage}"
+
+**任务：** 根据用户的回答，非常简洁地判断用户在每个考察维度上的倾向。
+- **回复格式必须严格遵守：**
+  - 如果是单一维度 (例如 E_vs_I)，直接回答 "倾向E。" 或 "倾向I。"
+  - 如果是多维度 (例如 E_vs_I, T_vs_F)，则分别判断每个维度，并用中文句号和空格分隔，例如："E/I: 倾向E。 T/F: 倾向F。"
+- **重要：**
+    - **只提供判断结果，不要包含任何额外对话、解释、确认、或对问题的重复。**
+    - **使用中文句号 "。"**
+    - 例如，如果问题考察 E_vs_I 且用户表现为E，则回复 "倾向E。"
+    - 例如，如果问题考察 E_vs_I, T_vs_F，用户表现为E和F，则回复 "E/I: 倾向E。 T/F: 倾向F。"`;
+                    
+                    botResponse = await callDeepSeekAPI(userMessage, conversationHistory, 'mbti_analysis', systemPromptForMbti);
+                    
+                    if (thinkingIndicator) chatMessagesContainer.removeChild(thinkingIndicator);
+                    
+                    console.log("MBTI Analysis Raw AI Response:", botResponse);
+                    parseAndRecordMbtiTendency(botResponse, currentMbtiAspect); 
+                    
+                    currentMbtiQuestionIndex++;
+                    if (currentMbtiQuestionIndex < allMbtiQuestions.length && isMbtiTestActive) { 
+                         addMessageToUI("明白了。下一个问题是：", 'bot'); 
+                    }
+                    askNextMbtiQuestion();
+
+                } else { 
+                    botResponse = await callDeepSeekAPI(userMessage, conversationHistory, 'chat');
+                    if (thinkingIndicator) chatMessagesContainer.removeChild(thinkingIndicator);
+                    addMessageToUI(botResponse, 'bot');
+                }
+
+            } catch (error) {
+                console.error("Error in handleUserMessage:", error);
+                if (thinkingIndicator) chatMessagesContainer.removeChild(thinkingIndicator);
+                addMessageToUI("抱歉，处理您的请求时发生内部错误，请稍后再试。", 'bot');
+            }
+        }
+
+        async function generateConsultationReport() {
+            if (conversationHistory.length < 3) { 
+                 addMessageToUI("请先进行更多一些对话，这样我才能为您生成一份更有洞察的AI分析报告。", 'bot');
+                 return;
+            }
+            document.getElementById('report-user-profile').textContent = 'AI分析中，请稍候...';
+            document.getElementById('report-mental-state').textContent = 'AI分析中，请稍候...';
+            document.getElementById('report-emotion-analysis').textContent = 'AI分析中，请稍候...';
+            document.getElementById('report-suggestions').textContent = 'AI分析中，请稍候...';
+            
+            reportModal.classList.remove('hidden', 'opacity-0');
+            reportModal.classList.add('flex'); 
+            if (fm && typeof fm.animate === 'function') {
+                fm.animate(reportModal, { opacity: 1 }, { duration: 0.3 });
+                fm.animate(reportModal.querySelector('[data-motion-modal-content]'), { scale: 1 }, { duration: 0.3, delay:0.05, ease: "easeOut" });
+            } else {
+                reportModal.style.opacity = 1;
+                reportModal.querySelector('[data-motion-modal-content]').style.transform = 'scale(1)';
+            }
+
+
+            let reportPrompt = "请根据以下用户(User)与AI疗愈助手(Assistant)的对话记录，生成一份简明扼要的AI分析报告。报告应包含以下四个部分，请务必使用数字编号和明确的标题：\n1. 用户画像总结 (例如：总结用户的沟通风格、主要关注点或表达的情绪模式)\n2. 心理状态评估 (例如：根据对话推断用户当前可能的情绪状态，如平静、焦虑、积极等，并简述原因)\n3. 情感分析概要 (例如：对话中主要体现了哪些积极或消极的情感词汇或主题)\n4. AI建议 (提出1-2条具体的、积极的、非诊断性的通用性建议，例如可以尝试的放松技巧、思考角度，或在必要时提示寻求专业心理咨询的重要性)。\n请确保报告结构清晰，语言专业、客观且富有同情心。\n\n对话记录开始：\n";
+            conversationHistory.forEach(msg => {
+                 reportPrompt += `${msg.role === 'user' ? '用户' : '助手'}: ${msg.content}\n`;
+            });
+             reportPrompt += "\n对话记录结束。\n请生成报告。";
+
+            const reportContentText = await callDeepSeekAPI(reportPrompt, [], 'report'); 
+            
+            try {
+                const userProfileMatch = reportContentText.match(/1\.\s*用户画像总结[:：\s]*([\s\S]*?)(?=\n2\.\s|\n\n2\.\s|$)/i);
+                const mentalStateMatch = reportContentText.match(/2\.\s*心理状态评估[:：\s]*([\s\S]*?)(?=\n3\.\s|\n\n3\.\s|$)/i);
+                const emotionAnalysisMatch = reportContentText.match(/3\.\s*情感分析概要[:：\s]*([\s\S]*?)(?=\n4\.\s|\n\n4\.\s|$)/i);
+                const suggestionsMatch = reportContentText.match(/4\.\s*AI建议[:：\s]*([\s\S]*?)(?=$)/i);
+
+                document.getElementById('report-user-profile').innerHTML = userProfileMatch ? userProfileMatch[1].trim().replace(/\n/g, '<br>') : '未能生成用户画像。';
+                document.getElementById('report-mental-state').innerHTML = mentalStateMatch ? mentalStateMatch[1].trim().replace(/\n/g, '<br>') : '未能生成心理状态评估。';
+                document.getElementById('report-emotion-analysis').innerHTML = emotionAnalysisMatch ? emotionAnalysisMatch[1].trim().replace(/\n/g, '<br>') : '未能生成情感分析。';
+                document.getElementById('report-suggestions').innerHTML = suggestionsMatch ? suggestionsMatch[1].trim().replace(/\n/g, '<br>') : '未能生成AI建议。';
+
+            } catch (parseError) {
+                 console.error("Error parsing report content:", parseError);
+                 document.getElementById('report-user-profile').textContent = '报告解析失败。';
+                 document.getElementById('report-mental-state').innerHTML = `原始AI回复：<br>${reportContentText.replace(/\n/g, '<br>')}`;
+                 document.getElementById('report-emotion-analysis').textContent = '';
+                 document.getElementById('report-suggestions').textContent = '';
+            }
+        }
+        
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            sendButton.addEventListener('click', handleUserMessage);
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); 
+                    handleUserMessage();
+                }
+            });
+    
+            userInput.addEventListener('input', function() { 
+                this.style.height = 'auto'; 
+                let newHeight = this.scrollHeight;
+                const maxHeight = 180; 
+                if (newHeight > maxHeight) {
+                    newHeight = maxHeight;
+                    this.style.overflowY = 'auto';
+                } else {
+                    this.style.overflowY = 'hidden';
+                }
+                this.style.height = newHeight + 'px';
+            });
+    
+            reportBtn.addEventListener('click', generateConsultationReport);
+            mbtiButton.addEventListener('click', startMbtiTest);
+    
+            closeModalBtn.addEventListener('click', function() {
+                if (fm && typeof fm.animate === 'function') {
+                    fm.animate(reportModal.querySelector('[data-motion-modal-content]'), { scale: 0.95 }, { duration: 0.2, ease: "easeIn" });
+                    fm.animate(reportModal, { opacity: 0 }, { duration: 0.2, delay: 0.1 }).then(() => {
+                        reportModal.classList.add('hidden');
+                        reportModal.classList.remove('flex');
+                    });
+                } else {
+                    reportModal.querySelector('[data-motion-modal-content]').style.transform = 'scale(0.95)';
+                    reportModal.style.opacity = 0;
+                    setTimeout(() => {
+                         reportModal.classList.add('hidden');
+                         reportModal.classList.remove('flex');
+                    }, 200);
+                }
+            });
+    
+            reportModal.addEventListener('click', function(event) { 
+                if (event.target === reportModal) { 
+                    closeModalBtn.click();
+                }
+            });
+        }
+
+        // --- DOMContentLoaded ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Framer Motion variables
+            if (typeof window.Motion !== 'undefined') {
+                const motionModule = window.Motion;
+                fm = motionModule.motion; 
+                AnimatePresence = motionModule.AnimatePresence; 
+                console.log("Framer Motion initialized successfully.");
+            } else {
+                console.error("Framer Motion library (Motion) not found on window object. Animations will be basic or disabled.");
+                // Provide a dummy 'fm.animate' if Motion is not loaded to prevent further errors,
+                // though Framer Motion animations won't work.
+                fm = { 
+                    animate: (el, animProps, transProps) => {
+                        console.warn("Framer Motion not loaded. Applying basic CSS transition for:", el);
+                        el.style.transition = `opacity ${transProps?.duration || 0.5}s ease-out, transform ${transProps?.duration || 0.5}s ease-out`;
+                        if(animProps.opacity !== undefined) el.style.opacity = animProps.opacity;
+                        if(animProps.y !== undefined) el.style.transform = `translateY(${animProps.y}px)`;
+                        if(animProps.x !== undefined) el.style.transform = `${el.style.transform || ''} translateX(${animProps.x}px)`;
+                        if(animProps.scale !== undefined) el.style.transform = `${el.style.transform || ''} scale(${animProps.scale})`;
+                    }
+                };
+            }
+
+            chatMessagesContainer = document.getElementById('chatMessages');
+            userInput = document.getElementById('userInput');
+            sendButton = document.getElementById('sendButton');
+            reportBtn = document.getElementById('reportBtn');
+            reportModal = document.getElementById('reportModal');
+            closeModalBtn = document.getElementById('closeModal');
+            mbtiButton = document.getElementById('mbtiButton');
+            mbtiResultDisplay = document.getElementById('mbti-type-display');
+            mbtiResultLabelEn = document.getElementById('mbti-type-label-en');
+
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            const firstBotMessageTime = chatMessagesContainer.querySelector('.message-time');
+            if (firstBotMessageTime) {
+                firstBotMessageTime.textContent = getCurrentTime();
+            }
+
+            setTimeout(applyMotionAnimations, 100); 
+            
+            initializeMbtiQuestions();
+            setupEventListeners();
+            userInput.dispatchEvent(new Event('input'));
+        });
+    </script> 
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBTI 性格测试</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #3c7bbe;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .scenario {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e6ed;
+        }
+        .scenario:last-child {
+            border-bottom: none;
+        }
+        .scenario-title {
+            font-size: 1.5em;
+            color: #3c7bbe;
+            margin-bottom: 10px;
+        }
+        .scenario-description {
+            font-size: 0.9em;
+            color: #7d8b98;
+            margin-bottom: 15px;
+        }
+        .question-block {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e0e6ed;
+        }
+        .question-text {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        .options-group {
+            margin-bottom: 10px;
+        }
+        .aspect-label {
+            font-size: 0.9em;
+            color: #3c7bbe;
+            margin-bottom: 5px;
+        }
+        .options-group label {
+            display: block;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        .options-group label:hover {
+            background-color: #e9eff5;
+        }
+        .options-group input[type="radio"] {
+            margin-right: 8px;
+            transform: translateY(1px);
+        }
+        .submit-btn {
+            display: block;
+            width: 200px;
+            margin: 30px auto 0;
+            padding: 12px 20px;
+            background-color: #3c7bbe;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-align: center;
+        }
+        .submit-btn:hover {
+            background-color: #2a5b8f;
+        }
+        #result-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 8px;
+            text-align: center;
+        }
+        #result-container h2 {
+            color: #3c7bbe;
+            margin-bottom: 10px;
+        }
+        #result-container p {
+            font-size: 1.2em;
+            color: #333;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MBTI 性格测试</h1>
+        <div id="test-container">
+            <!-- Questions will be loaded here -->
+        </div>
+        <button id="submit-mbti" class="submit-btn">提交并查看结果</button>
+        <div id="result-container" style="display: none;">
+            <h2>您的MBTI类型是：</h2>
+            <p id="mbti-result-value"></p>
+            <p style="font-size: 0.8em; color: #777; margin-top: 15px;">
+                *温馨提示：本测试结果仅供参考，MBTI是一种自我探索工具，而非严格的科学诊断。更准确的评估请咨询专业人士。
+            </p>
+        </div>
+        <div id="error-message-container" class="error-message" style="display: none;"></div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const testContainer = document.getElementById('test-container');
+            const submitButton = document.getElementById('submit-mbti');
+            const resultContainer = document.getElementById('result-container');
+            const resultValueElement = document.getElementById('mbti-result-value');
+            const errorMessageContainer = document.getElementById('error-message-container');
+            let totalUniqueAspectSelectionsRequired = 0;
+
+            // 内联的测试数据
+            const scenariosData = [
+                {
+                    "name": "社交场景",
+                    "description": "在社交场合中的表现",
+                    "questions": [
+                        {
+                            "q_id": "q1",
+                            "text": "在社交场合中，你更倾向于：",
+                            "mbti_aspect": "E_vs_I"
+                        },
+                        {
+                            "q_id": "q2",
+                            "text": "在团队活动中，你更喜欢：",
+                            "mbti_aspect": "E_vs_I"
+                        }
+                    ]
+                },
+                {
+                    "name": "信息处理",
+                    "description": "处理信息和决策的方式",
+                    "questions": [
+                        {
+                            "q_id": "q3",
+                            "text": "在做决定时，你更倾向于：",
+                            "mbti_aspect": "T_vs_F"
+                        },
+                        {
+                            "q_id": "q4",
+                            "text": "面对问题时，你更关注：",
+                            "mbti_aspect": "S_vs_N"
+                        }
+                    ]
+                }
+            ];
+
+            renderTest(scenariosData);
+
+            function renderTest(scenarios) {
+                if (!scenarios || !Array.isArray(scenarios)) {
+                    testContainer.innerHTML = '<p style="color: red; text-align: center;">MBTI测试题目数据格式不正确。</p>';
+                    submitButton.style.display = 'none';
+                    return;
+                }
+                
+                const form = document.createElement('form');
+                form.id = 'mbti-test-form';
+
+                scenarios.forEach(scenario => {
+                    const scenarioDiv = document.createElement('div');
+                    scenarioDiv.className = 'scenario';
+
+                    const scenarioTitle = document.createElement('h2');
+                    scenarioTitle.className = 'scenario-title';
+                    scenarioTitle.textContent = scenario.name || '情景';
+                    scenarioDiv.appendChild(scenarioTitle);
+
+                    if (scenario.description) {
+                        const scenarioDescription = document.createElement('p');
+                        scenarioDescription.className = 'scenario-description';
+                        scenarioDescription.textContent = scenario.description;
+                        scenarioDiv.appendChild(scenarioDescription);
+                    }
+
+                    if (scenario.questions && Array.isArray(scenario.questions)) {
+                        scenario.questions.forEach(question => {
+                            const questionBlock = document.createElement('div');
+                            questionBlock.className = 'question-block';
+                            questionBlock.setAttribute('data-q-id', question.q_id);
+
+                            const questionText = document.createElement('p');
+                            questionText.className = 'question-text';
+                            questionText.textContent = question.text;
+                            questionBlock.appendChild(questionText);
+
+                            const aspects = question.mbti_aspect.split(',').map(s => s.trim());
+                            aspects.forEach(aspectPair => {
+                                const [pole1, pole2] = aspectPair.split('_vs_');
+                                if (pole1 && pole2) {
+                                    totalUniqueAspectSelectionsRequired++; // 每个维度对计为一个必选项
+                                    const optionsGroup = document.createElement('div');
+                                    optionsGroup.className = 'options-group';
+                                    
+                                    const aspectLabel = document.createElement('p');
+                                    aspectLabel.className = 'aspect-label';
+                                    aspectLabel.textContent = `关于 ${pole1} vs ${pole2}，您的倾向是:`;
+                                    optionsGroup.appendChild(aspectLabel);
+
+                                    const radioName = `${question.q_id}_${aspectPair}`;
+
+                                    const option1Label = document.createElement('label');
+                                    const option1Input = document.createElement('input');
+                                    option1Input.type = 'radio';
+                                    option1Input.name = radioName;
+                                    option1Input.value = pole1;
+                                    option1Input.required = true; 
+                                    option1Label.appendChild(option1Input);
+                                    let option1Text = `倾向 ${pole1}`;
+                                    option1Label.appendChild(document.createTextNode(option1Text));
+                                    optionsGroup.appendChild(option1Label);
+
+                                    const option2Label = document.createElement('label');
+                                    const option2Input = document.createElement('input');
+                                    option2Input.type = 'radio';
+                                    option2Input.name = radioName;
+                                    option2Input.value = pole2;
+                                    option2Input.required = true;
+                                    option2Label.appendChild(option2Input);
+                                    let option2Text = `倾向 ${pole2}`;
+                                    option2Label.appendChild(document.createTextNode(option2Text));
+                                    optionsGroup.appendChild(option2Label);
+                                    
+                                    questionBlock.appendChild(optionsGroup);
+                                }
+                            });
+                            scenarioDiv.appendChild(questionBlock);
+                        });
+                    }
+                    form.appendChild(scenarioDiv);
+                });
+                testContainer.appendChild(form);
+            }
+
+            submitButton.addEventListener('click', () => {
+                const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+                const formElement = document.getElementById('mbti-test-form');
+                if (!formElement) return;
+
+                const formData = new FormData(formElement);
+                let selectionsCount = 0;
+                
+                const selectedGroups = new Set();
+                for (const pair of formData.entries()) { 
+                    selectedGroups.add(pair[0]); 
+                    if (scores.hasOwnProperty(pair[1].toUpperCase())) {
+                         scores[pair[1].toUpperCase()]++;
+                    }
+                }
+                selectionsCount = selectedGroups.size;
+
+
+                errorMessageContainer.textContent = '';
+                errorMessageContainer.style.display = 'none';
+
+                if (selectionsCount < totalUniqueAspectSelectionsRequired) {
+                    errorMessageContainer.textContent = `请完成所有 ${totalUniqueAspectSelectionsRequired} 个题目选择后再提交。您目前完成了 ${selectionsCount} 项。`;
+                    errorMessageContainer.style.display = 'block';
+                    resultContainer.style.display = 'none';
+                    
+                    const radios = formElement.querySelectorAll('input[type="radio"]');
+                    for (let i = 0; i < radios.length; i += 2) { 
+                        if (!radios[i].checked && !radios[i+1].checked) {
+                            radios[i].closest('.question-block').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            break;
+                        }
+                    }
+                    return;
+                }
+                
+                let mbtiType = '';
+                mbtiType += scores.E >= scores.I ? 'E' : 'I';
+                mbtiType += scores.S >= scores.N ? 'S' : 'N';
+                mbtiType += scores.T >= scores.F ? 'T' : 'F';
+                mbtiType += scores.J >= scores.P ? 'J' : 'P';
+
+                resultValueElement.textContent = mbtiType;
+                resultContainer.style.display = 'block';
+                resultContainer.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html> 
