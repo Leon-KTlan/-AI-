@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindEmoj - 表情反应</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com/3.4.3"></script>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-color-light: #dbeafe;
+            --primary-color-dark: #2563eb;
+            --secondary-color: #f43f5e; /* For lives/danger */
+            --correct-color: #22c55e;
+            --light-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .game-wrapper {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .game-title {
+            font-size: clamp(2rem, 6vw, 3rem);
+            font-weight: 900;
+            color: var(--text-dark);
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        .game-title .brand {
+             color: var(--primary-color);
+        }
+
+        .bento-box {
+            background-color: var(--card-bg);
+            padding: clamp(1.5rem, 5vw, 2.5rem);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            border: 1px solid #e2e8f0;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+        }
+
+        .stat-item {
+            background-color: #f1f5f9;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            min-width: 100px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+        .stat-item span {
+            color: var(--text-dark);
+            font-weight: 700;
+        }
+        .lives-display .life-icon {
+            color: var(--secondary-color);
+            margin: 0 2px;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .lives-display .life-lost {
+            opacity: 0.2;
+            transform: scale(0.8);
+        }
+        .lives-display.life-shake {
+            animation: shake 0.5s;
+        }
+
+        .target-emoji-area {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: var(--primary-color-light);
+            border: 4px solid var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem auto;
+            position: relative;
+        }
+
+        .target-emoji-display {
+            font-size: clamp(4rem, 15vw, 6rem);
+            animation: fadeInScale 0.3s ease-out;
+        }
+
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeOutScale { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.7); } }
+
+        .timer-ring-container {
+            position: absolute;
+            top: -8px; left: -8px; right: -8px; bottom: -8px;
+        }
+        .timer-ring-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+        .timer-ring-circle {
+            fill: transparent;
+            stroke-width: 8px;
+            stroke: var(--correct-color);
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.1s linear, stroke 0.2s;
+        }
+        .timer-ring-circle.warning { stroke: #f59e0b; }
+        .timer-ring-circle.danger { stroke: var(--secondary-color); }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .emoji-option-btn {
+            font-size: clamp(2rem, 6vw, 3rem);
+            background-color: #f8fafc;
+            color: var(--text-dark);
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s;
+        }
+
+        .emoji-option-btn:hover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-color-light);
+        }
+        .emoji-option-btn:active {
+            transform: scale(0.95);
+        }
+        .emoji-option-btn.correct-flash {
+            animation: flashCorrect 0.4s;
+        }
+        .emoji-option-btn.wrong-flash {
+            animation: flashWrong 0.4s;
+        }
+
+        @keyframes flashCorrect {
+            50% { background-color: var(--correct-color); border-color: var(--correct-color); color: white;}
+        }
+        @keyframes flashWrong {
+            50% { background-color: var(--secondary-color); border-color: var(--secondary-color); color: white;}
+        }
+
+        .feedback-text {
+            height: 30px;
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .action-btn {
+            font-size: 1.2rem;
+            padding: 0.75rem 2rem;
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 700;
+            box-shadow: 0 4px 15px -5px rgba(59, 130, 246, 0.5);
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .action-btn:hover {
+            box-shadow: 0 6px 20px -5px rgba(59, 130, 246, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .game-over-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(248, 250, 252, 0.9);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; opacity: 0; visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            z-index: 1000;
+        }
+        .game-over-overlay.visible { opacity: 1; visibility: visible; }
+        .game-over-content {
+            background-color: white; padding: 2rem; border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            animation: slideInUp 0.5s ease-out forwards;
+        }
+        @keyframes slideInUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .game-over-overlay h2 { font-size: 2.5rem; font-weight: 900; color: var(--text-dark); margin-bottom: 1rem; }
+        .game-over-overlay p { font-size: 1.25rem; color: var(--text-light); margin-bottom: 0.75rem; }
+        .game-over-overlay .restart-btn { margin-top: 1.5rem; }
+
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-3px, 0, 0); } 40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+        
+        .hidden-by-js { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <h1 class="game-title"><span class="brand">MindEmoj</span> - 表情反应</h1>
+        
+        <div id="game-area" class="bento-box">
+            <div class="stats-container hidden-by-js">
+                <div class="stat-item">分数: <span id="score-display">0</span></div>
+                <div class="stat-item lives-display">
+                    <span class="life-icon" data-life="1">❤️</span>
+                    <span class="life-icon" data-life="2">❤️</span>
+                    <span class="life-icon" data-life="3">❤️</span>
+                </div>
+                <div class="stat-item">最佳: <span id="high-score-display">0</span></div>
+            </div>
+
+            <div class="target-emoji-area hidden-by-js">
+                <div class="timer-ring-container">
+                    <svg class="timer-ring-svg" viewBox="0 0 100 100">
+                        <circle class="timer-ring-circle" cx="50" cy="50" r="45"></circle>
+                    </svg>
+                </div>
+                <div class="target-emoji-display" id="target-emoji-display">❓</div>
+            </div>
+
+            <div class="options-container hidden-by-js" id="options-container"></div>
+            <div class="feedback-text" id="feedback-text"></div>
+            <button class="action-btn" id="start-btn">开始游戏</button>
+        </div>
+    </div>
+
+
+    <div class="game-over-overlay" id="game-over-overlay">
+        <div class="game-over-content">
+            <h2>游戏结束!</h2>
+            <p>你的分数: <span id="final-score">0</span></p>
+            <p>最高分: <span id="final-high-score">0</span></p>
+            <button class="action-btn restart-btn" id="restart-btn">再试一次</button>
+        </div>
+    </div>
+
+    <script>
+        const EMOJI_CATEGORIES = {
+            faces_happy: ['😀', '😄', '😊', '😍', '🥳', '🤩', '😂', '😇'],
+            faces_sad_worried: ['😢', '😭', '😞', '😟', '😥', '😨', '😰', '🙁'],
+            faces_neutral_silly: ['🤔', '😐', '😑', '😬', '🙄', '😜', '🤪', '🥸'],
+            animals_land: ['🐶', '🐱', '🦊', '🐻', '🐼', '🐨', '🦁', '🐯', '🐵'],
+            animals_water: ['🐠', '🐙', '🐳', '🐬', '🦀', '🦐', '🦑', '🐡'],
+            animals_air_bug: ['🦋', '🐞', '🐝', '🦅', '🦉', '🐛', '🐌', '🐜'],
+            food_fruit: ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🥭', '🍑', '🍒'],
+            food_veg: ['🥕', '🌽', '🥦', '🥑', '🍆', '🌶️', '🍄', '🥬'],
+            food_sweets: ['🍩', '🍪', '🍰', '🍦', '🍭', '🍫', '🍮', '🥧'],
+            objects_round: ['⚽', '🏀', '⚾', '🪙', '💿', '🧿', '🔮', '🎈'],
+            objects_tools: ['🔨', '🔧', '🔪', '✂️', '⚙️', '🔑', '🪓', '⛏️'],
+            symbols_pointy: ['⭐', '✨', '⚡', '🔺', '💠', '♦️', '✴️']
+        };
+        const ALL_EMOJIS = Object.values(EMOJI_CATEGORIES).flat().filter((e, i, arr) => arr.indexOf(e) === i);
+
+        const scoreDisplay = document.getElementById('score-display');
+        const highScoreDisplay = document.getElementById('high-score-display');
+        const livesDisplayContainer = document.querySelector('.lives-display');
+        const lifeIcons = Array.from(livesDisplayContainer.querySelectorAll('.life-icon'));
+        const targetEmojiDisplay = document.getElementById('target-emoji-display');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackText = document.getElementById('feedback-text');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const gameOverOverlay = document.getElementById('game-over-overlay');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const finalHighScoreDisplay = document.getElementById('final-high-score');
+        const timerRing = document.querySelector('.timer-ring-circle');
+        const timerRingRadius = timerRing.r.baseVal.value;
+        const timerRingCircumference = 2 * Math.PI * timerRingRadius;
+        const statsContainerEl = document.querySelector('.stats-container');
+        const targetEmojiAreaEl = document.querySelector('.target-emoji-area');
+
+        let score = 0;
+        let lives = 3;
+        let highScore = localStorage.getItem('emojiReactorHighScore_mindnote') || 0;
+        let currentTargetEmoji = '';
+        let roundTimerId = null;
+        let currentTimerDuration = 1700;
+        const MIN_TIMER_DURATION = 600;
+        const TIMER_DECREASE_STEP = 50;
+        const SCORE_MILESTONE_FOR_SPEEDUP = 200;
+        let comboCount = 0;
+        let gameState = 'waitingToStart';
+
+        let audioContext;
+        try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch (e) { console.warn("Web Audio API is not supported."); audioContext = null; }
+
+        function playSound(type) {
+            if (!audioContext) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+
+            let freq = 440, duration = 0.2, oscType = 'sine';
+            switch (type) {
+                case 'correct': freq = 880; duration = 0.15; oscType = 'triangle'; break;
+                case 'wrong': freq = 220; duration = 0.3; oscType = 'square'; break;
+                case 'loseLife': freq = 150; duration = 0.4; oscType = 'sawtooth'; break;
+                case 'timeout': freq = 180; duration = 0.35; oscType = 'sawtooth'; break;
+                case 'gameStart': freq = 600; duration = 0.2; oscType = 'sine'; playSound('correct'); break;
+                case 'gameOver': freq = 100; duration = 0.5; oscType = 'sawtooth'; break;
+                case 'combo': freq = 1200; duration = 0.1; oscType = 'sine'; break;
+                default: gainNode.gain.setValueAtTime(0, audioContext.currentTime); return;
+            }
+            oscillator.type = oscType;
+            oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + duration);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        function updateDisplays() {
+            scoreDisplay.textContent = score;
+            highScoreDisplay.textContent = highScore;
+            lifeIcons.forEach((icon, index) => icon.classList.toggle('life-lost', index >= lives));
+        }
+
+        function getRandomEmoji(excludeList = []) {
+            let emoji;
+            do { emoji = ALL_EMOJIS[Math.floor(Math.random() * ALL_EMOJIS.length)]; } while (excludeList.includes(emoji));
+            return emoji;
+        }
+
+        function getCategoryOfEmoji(emoji) {
+            for (const category in EMOJI_CATEGORIES) {
+                if (EMOJI_CATEGORIES[category].includes(emoji)) return category;
+            }
+            return null;
+        }
+
+        function getDistractorEmojis(target, count = 3) {
+            const distractors = new Set();
+            const targetCategory = getCategoryOfEmoji(target);
+            if (targetCategory && EMOJI_CATEGORIES[targetCategory].length > 1) {
+                const categoryEmojis = EMOJI_CATEGORIES[targetCategory].filter(e => e !== target);
+                while (distractors.size < count && categoryEmojis.length > 0) {
+                    distractors.add(categoryEmojis.splice(Math.floor(Math.random() * categoryEmojis.length), 1)[0]);
+                }
+            }
+            const excludeList = [target, ...distractors];
+            while (distractors.size < count) {
+                distractors.add(getRandomEmoji(excludeList));
+                excludeList.push(...distractors);
+            }
+            return Array.from(distractors);
+        }
+
+        function startRound() {
+            if (gameState !== 'playing') return;
+            clearTimeout(roundTimerId);
+            optionsContainer.innerHTML = '';
+            feedbackText.textContent = '';
+            targetEmojiDisplay.classList.remove('fadeOutScale');
+
+            currentTargetEmoji = getRandomEmoji();
+            const currentOptions = [...getDistractorEmojis(currentTargetEmoji, 3), currentTargetEmoji].sort(() => Math.random() - 0.5);
+            targetEmojiDisplay.textContent = currentTargetEmoji;
+            targetEmojiDisplay.style.animation = 'none';
+            void targetEmojiDisplay.offsetWidth;
+            targetEmojiDisplay.style.animation = 'fadeInScale 0.3s ease-out';
+            currentOptions.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.className = 'emoji-option-btn';
+                btn.textContent = emoji;
+                btn.onclick = () => handleOptionClick(emoji, btn);
+                optionsContainer.appendChild(btn);
+            });
+            startRoundTimer();
+        }
+
+        function startRoundTimer() {
+            timerRing.style.strokeDasharray = timerRingCircumference;
+            timerRing.style.strokeDashoffset = 0;
+            timerRing.classList.remove('warning', 'danger');
+            let startTime = Date.now();
+            function updateTimerVisual() {
+                if (gameState !== 'playing') return;
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.max(0, (currentTimerDuration - elapsedTime) / currentTimerDuration);
+                timerRing.style.strokeDashoffset = timerRingCircumference * (1 - progress);
+                if (progress < 0.25) timerRing.classList.add('danger');
+                else if (progress < 0.5) timerRing.classList.add('warning');
+                if (progress <= 0) handleTimeout();
+                else roundTimerId = requestAnimationFrame(updateTimerVisual);
+            }
+            roundTimerId = requestAnimationFrame(updateTimerVisual);
+        }
+        
+        function handleTimeout() {
+            if (gameState !== 'playing') return;
+            cancelAnimationFrame(roundTimerId);
+            playSound('timeout');
+            feedbackText.textContent = "太慢了! 🐌";
+            loseLife();
+        }
+
+        function handleOptionClick(selectedEmoji, buttonElement) {
+            if (gameState !== 'playing') return;
+            cancelAnimationFrame(roundTimerId);
+            optionsContainer.querySelectorAll('.emoji-option-btn').forEach(btn => btn.disabled = true);
+            if (selectedEmoji === currentTargetEmoji) {
+                playSound('correct');
+                score += 100;
+                comboCount++;
+                feedbackText.textContent = comboCount >= 5 ? `连击 x${comboCount}! 🔥` : "正确! ✅";
+                buttonElement.classList.add('correct-flash');
+                if (comboCount > 0 && comboCount % 5 === 0) {
+                    playSound('combo');
+                    feedbackText.textContent = `超强连击 x${comboCount}! ⭐`;
+                }
+                if (score > 0 && score % SCORE_MILESTONE_FOR_SPEEDUP === 0) {
+                    currentTimerDuration = Math.max(MIN_TIMER_DURATION, currentTimerDuration - TIMER_DECREASE_STEP);
+                }
+                setTimeout(() => {
+                    buttonElement.classList.remove('correct-flash');
+                    targetEmojiDisplay.style.animation = 'fadeOutScale 0.2s ease-in forwards';
+                     setTimeout(() => gameState === 'playing' && startRound(), 200);
+                }, 300);
+            } else {
+                playSound('wrong');
+                comboCount = 0;
+                feedbackText.textContent = "错误! ❌";
+                buttonElement.classList.add('wrong-flash');
+                const correctButton = Array.from(optionsContainer.querySelectorAll('.emoji-option-btn')).find(btn => btn.textContent === currentTargetEmoji);
+                if (correctButton) correctButton.classList.add('correct-flash');
+                setTimeout(() => {
+                    buttonElement.classList.remove('wrong-flash');
+                    if (correctButton) correctButton.classList.remove('correct-flash');
+                    loseLife();
+                }, 600);
+            }
+            updateDisplays();
+        }
+
+        function loseLife() {
+            if (gameState !== 'playing') return;
+            playSound('loseLife');
+            lives--;
+            livesDisplayContainer.classList.add('life-shake');
+            setTimeout(() => livesDisplayContainer.classList.remove('life-shake'), 500);
+            updateDisplays();
+            if (lives <= 0) {
+                triggerGameOver();
+            } else {
+                 targetEmojiDisplay.style.animation = 'fadeOutScale 0.2s ease-in forwards';
+                 setTimeout(() => gameState === 'playing' && startRound(), 200);
+            }
+        }
+
+        function triggerGameOver() {
+            gameState = 'gameOver';
+            playSound('gameOver');
+            cancelAnimationFrame(roundTimerId);
+            finalScoreDisplay.textContent = score;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('emojiReactorHighScore_mindnote', highScore);
+            }
+            finalHighScoreDisplay.textContent = highScore;
+            gameOverOverlay.classList.add('visible');
+        }
+
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            comboCount = 0;
+            currentTimerDuration = 1700;
+            updateDisplays();
+            feedbackText.textContent = '';
+            targetEmojiDisplay.textContent = '❓';
+            optionsContainer.innerHTML = '';
+            gameOverOverlay.classList.remove('visible');
+            timerRing.style.strokeDashoffset = timerRingCircumference;
+            timerRing.classList.remove('warning', 'danger');
+        }
+
+        function initGameScreen() {
+            statsContainerEl.classList.remove('hidden-by-js');
+            targetEmojiAreaEl.classList.remove('hidden-by-js');
+            optionsContainer.classList.remove('hidden-by-js');
+            startBtn.style.display = 'none';
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (gameState === 'waitingToStart' || gameState === 'gameOver') {
+                gameState = 'playing';
+                playSound('gameStart');
+                resetGame();
+                initGameScreen();
+                startRound();
+            }
+        });
+
+        restartBtn.addEventListener('click', () => {
+             if (gameState === 'gameOver') {
+                gameState = 'playing';
+                playSound('gameStart');
+                resetGame();
+                initGameScreen();
+                startRound();
+            }
+        });
+
+        // Initial Setup
+        updateDisplays();
+        targetEmojiDisplay.textContent = '🚀';
+
+    </script>
+</body>
+</html>

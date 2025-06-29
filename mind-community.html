@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindNote - 社区</title>
+    <script src="https://cdn.tailwindcss.com/3.4.3"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6; /* Blue theme */
+            --primary-color-light: #eff6ff;
+            --primary-color-dark: #2563eb;
+        }
+        body {
+            font-family: 'Noto+Sans SC', sans-serif;
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
+        .main-container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background-color: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 1rem;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            color: #374151;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .sidebar-link i {
+            width: 24px;
+            text-align: center;
+        }
+        .sidebar-link.active, .sidebar-link:hover {
+            background-color: var(--primary-color-light);
+            color: var(--primary-color);
+        }
+        .sidebar-link.publish {
+             background-color: var(--primary-color);
+             color: white;
+        }
+        .sidebar-link.publish:hover {
+             background-color: var(--primary-color-dark);
+        }
+
+        .main-content {
+            overflow-y: auto;
+            padding: 1.5rem 2rem;
+        }
+        .top-nav {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1.5rem;
+        }
+        .top-nav a {
+            padding: 0.5rem 1rem;
+            margin-bottom: -1px;
+            border-bottom: 2px solid transparent;
+            color: #6b7280;
+            font-weight: 500;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .top-nav a.active, .top-nav a:hover {
+            color: #111827;
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .grid-item {
+            width: calc(50% - 1rem);
+            margin-bottom: 1.5rem;
+            break-inside: avoid;
+            transition: transform 0.2s ease;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: white;
+        }
+        @media (min-width: 768px) { .grid-item { width: calc(33.333% - 1rem); } }
+        @media (min-width: 1024px) { .grid-item { width: calc(25% - 1rem); } }
+        @media (min-width: 1280px) { .grid-item { width: calc(20% - 1rem); } }
+
+        .grid-item:hover { transform: translateY(-3px); }
+        .grid-item img { width: 100%; height: auto; display: block; background-color: #f0f4f8; }
+
+        .modal { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
+        .file-input-wrapper { border: 2px dashed #d1d5db; }
+        .file-input-wrapper.dragover { border-color: var(--primary-color); background-color: #eff6ff; }
+        .tag { background-color: #e5e7eb; color: #4b5563; }
+        .like-btn.liked { color: var(--primary-color); }
+        .like-btn.liked .fa-heart { animation: heart-pop 0.5s ease; }
+        @keyframes heart-pop { 0%{transform: scale(1);} 50%{transform: scale(1.3);} 100%{transform: scale(1);} }
+        .loader, .ai-loader {
+            width: 48px; height: 48px; border: 5px solid #f3f4f6;
+            border-bottom-color: var(--primary-color);
+            border-radius: 50%; display: inline-block; box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        .ai-loader { width: 20px; height: 20px; border-width: 3px; }
+        @keyframes rotation { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+        .ai-btn {
+            background-color: var(--primary-color-light);
+            color: var(--primary-color-dark);
+        }
+        .ai-btn:hover {
+             background-color: #dbeafe;
+        }
+    </style>
+</head>
+<body class="w-full h-screen overflow-hidden">
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="#" class="text-2xl font-bold text-gray-800 mb-8 pl-4">
+                <span class="text-blue-600">Mind</span>Note
+            </a>
+            <nav class="flex flex-col gap-2">
+                <a href="#" class="sidebar-link active"><i class="fas fa-compass fa-fw"></i> <span>发现</span></a>
+                <a href="#" id="create-post-btn" class="sidebar-link publish"><i class="fas fa-plus fa-fw"></i> <span>发布</span></a>
+                <a href="#" class="sidebar-link"><i class="fas fa-bell fa-fw"></i> <span>通知</span></a>
+                <a href="#" class="sidebar-link"><i class="fas fa-user fa-fw"></i> <span>我</span></a>
+            </nav>
+            <div class="mt-auto pl-4">
+                 <a href="#" class="text-sm text-gray-500 hover:text-gray-800"><i class="fas fa-cog mr-2"></i> 设置</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-nav">
+                <a href="#" class="active">推荐</a>
+                <a href="#">心理</a>
+                <a href="#">治愈</a>
+                <a href="#">冥想</a>
+                <a href="#">情感</a>
+                <a href="#">成长</a>
+                <a href="#">穿搭</a>
+                <a href="#">美食</a>
+                <a href="#">旅行</a>
+            </header>
+            <!-- 搜索框：居中显示 -->
+            <div class="flex justify-center my-6">
+              <input
+                type="text"
+                id="search-input"
+                placeholder="搜索MindNote"
+                class="w-full max-w-md px-4 py-2 border border-gray-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+              />
+            </div>
+            <div id="loading-indicator" class="text-center py-20">
+                <div class="max-w-md mx-auto">
+                    <div class="mb-6">
+                        <div class="w-16 h-16 mx-auto mb-4 relative">
+                            <div class="w-full h-full border-4 border-blue-200 rounded-full animate-pulse"></div>
+                            <div class="absolute inset-2 bg-blue-500 rounded-full flex items-center justify-center">
+                                <i class="fas fa-heart text-white text-lg"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">正在为您精心准备内容</h3>
+                        <p class="text-sm text-gray-500 mb-6">发现更多温暖的心理故事...</p>
+                    </div>
+                    
+                    <!-- 进度条 -->
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                    </div>
+                    
+                    <!-- 进度百分比和提示文字 -->
+                    <div class="flex justify-between items-center text-sm">
+                        <span id="progress-text" class="text-gray-600">准备中...</span>
+                        <span id="progress-percentage" class="font-bold text-blue-600">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div id="grid" class="opacity-0 transition-opacity duration-500">
+                <!-- Masonry grid items will be injected here -->
+            </div>
+            <!-- <div id="image-stats" class="text-center py-6 text-sm text-gray-500 opacity-0 transition-all duration-700">
+                <div class="flex items-center justify-center gap-4 mb-2">
+                    <span><span id="loaded-images-count">0</span> / <span id="total-images-count">0</span> 张图片已加载</span>
+                    <button id="load-all-images-btn" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition-colors hidden">
+                        加载全部图片
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400">💡 点击图片或滚动页面自动加载，节省流量</p>
+            </div> -->
+        </main>
+    </div>
+
+    <!-- Create Post Modal -->
+    <div id="create-post-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 modal">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl modal-content transform scale-95 opacity-0">
+             <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h2 class="text-xl font-bold text-gray-800">发布新笔记</h2>
+                <button id="close-create-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form id="create-post-form" class="p-6">
+                <div id="file-input-wrapper" class="file-input-wrapper w-full h-48 rounded-xl flex flex-col items-center justify-center mb-4 cursor-pointer text-center">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                    <p class="font-semibold text-gray-600">点击或拖拽图片到这里</p>
+                    <p class="text-sm text-gray-400">支持 JPG, PNG, GIF</p>
+                    <input type="file" id="image-upload" class="sr-only" accept="image/*">
+                </div>
+                <div id="image-preview" class="hidden mb-4 rounded-xl overflow-hidden relative">
+                    <img id="preview-img" src="" alt="Image preview" class="max-h-64 w-auto mx-auto">
+                    <button type="button" id="ai-suggestion-btn" class="absolute top-3 right-3 ai-btn px-3 py-2 text-sm rounded-full shadow-lg flex items-center gap-2" disabled>
+                        <span id="ai-btn-icon">✨</span>
+                        <span id="ai-btn-text">AI 生成建议</span>
+                        <div id="ai-btn-loader" class="ai-loader hidden"></div>
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="post-nickname" placeholder="留下你的匿名昵称" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="post-title" placeholder="填写标题，会获得更多赞哦～" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <textarea id="post-content" rows="4" placeholder="说说这篇笔记的灵感来源..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                </div>
+                <div class="mb-6">
+                    <input type="text" id="post-tags" placeholder="添加标签，让更多人看到（用逗号分隔）" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" id="submit-post-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center disabled:bg-blue-300" disabled>
+                    <span id="submit-btn-text">发布笔记</span>
+                    <div id="submit-spinner" class="loader !w-6 !h-6 !border-4 hidden"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Post Detail Modal -->
+    <div id="post-detail-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4 modal">
+         <button id="close-detail-modal-btn" class="absolute top-4 right-4 text-white/70 hover:text-white text-4xl z-10">&times;</button>
+         <div id="post-detail-content" class="w-full h-full flex items-center justify-center">
+            <!-- Detail content injected by JS -->
+         </div>
+    </div>
+
+    <!-- Masonry and imagesLoaded scripts -->
+    <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+    <script src="https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        const firebaseConfig = {
+          apiKey: "YOUR_API_KEY",
+          authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+          projectId: "YOUR_PROJECT_ID",
+          storageBucket: "YOUR_PROJECT_ID.appspot.com",
+          messagingSenderId: "YOUR_SENDER_ID",
+          appId: "YOUR_APP_ID"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        
+        const grid = document.getElementById('grid');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const createPostBtn = document.getElementById('create-post-btn');
+        const createModal = document.getElementById('create-post-modal');
+        const closeCreateModalBtn = document.getElementById('close-create-modal-btn');
+        const createForm = document.getElementById('create-post-form');
+        const imageUpload = document.getElementById('image-upload');
+        const fileInputWrapper = document.getElementById('file-input-wrapper');
+        const imagePreview = document.getElementById('image-preview');
+        const previewImg = document.getElementById('preview-img');
+        const submitPostBtn = document.getElementById('submit-post-btn');
+        const submitBtnText = document.getElementById('submit-btn-text');
+        const submitSpinner = document.getElementById('submit-spinner');
+        const aiSuggestionBtn = document.getElementById('ai-suggestion-btn');
+        const detailModal = document.getElementById('post-detail-modal');
+        const closeDetailModalBtn = document.getElementById('close-detail-modal-btn');
+        const detailContent = document.getElementById('post-detail-content');
+        const loadedImagesCountEl = document.getElementById('loaded-images-count');
+        const totalImagesCountEl = document.getElementById('total-images-count');
+        const loadAllImagesBtn = document.getElementById('load-all-images-btn');
+
+        let masonry;
+        
+        // --- DeepSeek API Call ---
+        const DEEPSEEK_API_KEY = 'sk-81ddae2501354967acd07fe6271203c1';
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+        async function callDeepSeekAPI(prompt, base64ImageData = null) {
+            const messages = [{ role: "user", content: prompt }];
+            if (base64ImageData) {
+                messages[0].content = [
+                    { type: "text", text: prompt },
+                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64ImageData}` } }
+                ];
+            }
+
+            try {
+                const response = await fetch(DEEPSEEK_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: messages,
+                    })
+                });
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error("API Error Response:", errorBody);
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                const result = await response.json();
+                if (result.choices && result.choices.length > 0) {
+                    return result.choices[0].message.content;
+                } else {
+                    throw new Error("Invalid API response format");
+                }
+            } catch (error) {
+                console.error("Error calling DeepSeek API:", error);
+                alert("AI功能调用失败，请检查API密钥或网络后重试。");
+                return null;
+            }
+        }
+
+        // --- Mock Data with optimized Unsplash links ---
+        const mockPosts = [
+            {
+                id: 'mock1',
+                imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "3分钟冥想，让内心瞬间平静下来",
+                author: { displayName: "心理师小雨" },
+                likes: 892
+            },
+            {
+                id: 'mock2',
+                imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "拥抱自己的不完美，是最温柔的自愈",
+                author: { displayName: "治愈系阿桃" },
+                likes: 1205
+            },
+            {
+                id: 'mock3',
+                imageUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "焦虑症患者的自救指南：从绝望到重生",
+                author: { displayName: "心灵摆渡人" },
+                likes: 687
+            },
+            {
+                id: 'mock4',
+                imageUrl: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "每天5分钟日落冥想，找回内心的宁静",
+                author: { displayName: "夕阳治愈师" },
+                likes: 456
+            },
+            {
+                id: 'mock5',
+                imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "写给深夜失眠的你：温柔的晚安心理学",
+                author: { displayName: "月亮知心姐" },
+                likes: 934
+            },
+            {
+                id: 'mock6',
+                imageUrl: "https://images.unsplash.com/photo-1549068106-b024baf5062d?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "被原生家庭伤害后，我学会了这样爱自己",
+                author: { displayName: "心理成长记" },
+                likes: 1567
+            },
+            {
+                id: 'mock7',
+                imageUrl: "https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "情绪低落时，试试这个神奇的呼吸法",
+                author: { displayName: "呼吸治愈师" },
+                likes: 723
+            },
+            {
+                id: 'mock8',
+                imageUrl: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "抑郁症康复日记：阳光终于照进我心里",
+                author: { displayName: "向阳而生" },
+                likes: 2134
+            },
+            {
+                id: 'mock9',
+                imageUrl: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "森林疗法：大自然是最好的心理医生",
+                author: { displayName: "自然疗愈师" },
+                likes: 589
+            },
+            {
+                id: 'mock10',
+                imageUrl: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "社交恐惧症的我，如何在人群中找到自信",
+                author: { displayName: "勇敢小蜗牛" },
+                likes: 445
+            },
+            {
+                id: 'mock11',
+                imageUrl: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "那些治愈心灵的小确幸时刻",
+                author: { displayName: "小确幸收集者" },
+                likes: 812
+            },
+            {
+                id: 'mock12',
+                imageUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "学会与内心的声音和解，是成长的开始",
+                author: { displayName: "内心对话师" },
+                likes: 976
+            },
+            {
+                id: 'mock13',
+                imageUrl: "https://images.unsplash.com/photo-1524863479829-916d8e77f114?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "当情绪来临时，我们该如何与它共舞",
+                author: { displayName: "情绪舞者" },
+                likes: 634
+            },
+            {
+                id: 'mock14',
+                imageUrl: "https://images.unsplash.com/photo-1456324504439-367cee3b3c32?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "心理边界：学会说不，是对自己最好的保护",
+                author: { displayName: "边界守护者" },
+                likes: 1089
+            },
+            {
+                id: 'mock15',
+                imageUrl: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "从完美主义到自我接纳：我的心路历程",
+                author: { displayName: "完美主义康复者" },
+                likes: 756
+            },
+            {
+                id: 'mock16',
+                imageUrl: "https://images.unsplash.com/photo-1426604966848-d7adac402bff?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "大山教会我的心理学：宁静致远",
+                author: { displayName: "山里来的心理师" },
+                likes: 423
+            },
+            {
+                id: 'mock17',
+                imageUrl: "https://images.unsplash.com/photo-1505142468610-359e7d316be0?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "孤独不是病，但学会独处是种能力",
+                author: { displayName: "独处艺术家" },
+                likes: 1198
+            },
+            {
+                id: 'mock18',
+                imageUrl: "https://images.unsplash.com/photo-1547036967-23d11aacaee0?q=60&w=400&auto=format&fit=crop&dpr=1",
+                title: "温柔的自我对话：改变从内心开始",
+                author: { displayName: "温柔的心理导师" },
+                likes: 867
+            }
+        ];
+        
+        function initMasonry() { masonry = new Masonry(grid, { itemSelector: '.grid-item', gutter: 16, percentPosition: true }); }
+        function getLikedPosts() { return JSON.parse(localStorage.getItem('mindNoteLikes') || '[]'); }
+        function isPostLiked(postId) { return getLikedPosts().includes(postId); }
+        function toggleLocalLike(postId) {
+            let likedPosts = getLikedPosts();
+            if (isPostLiked(postId)) {
+                likedPosts = likedPosts.filter(id => id !== postId);
+            } else {
+                likedPosts.push(postId);
+            }
+            localStorage.setItem('mindNoteLikes', JSON.stringify(likedPosts));
+        }
+        
+        function createPostElement(post, loadImage = false) {
+            const postEl = document.createElement('div');
+            postEl.className = 'grid-item bg-white cursor-pointer';
+            postEl.dataset.id = post.id;
+            
+            // 始终先显示文字内容，图片位置用占位符
+            postEl.innerHTML = `
+                <div class="relative bg-gray-100" style="min-height: 200px; aspect-ratio: 4/3;">
+                    <img 
+                        src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PGNpcmNsZSBjeD0iNTAlIiBjeT0iNDUlIiByPSIyMCIgZmlsbD0iI2Q1ZDlkZiIvPjxwYXRoIGQ9Im0yMDUgNDcuNSA3LjUgNy41LTcuNSA3LjUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+PHRleHQgeD0iNTAlIiB5PSI3NSUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+轻触加载图片</text></svg>" 
+                        alt="${post.title}" 
+                        data-src="${post.imageUrl}"
+                        class="lazy-image w-full h-full object-cover cursor-pointer transition-opacity duration-300"
+                        style="opacity: 1;"
+                    >
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <div class="bg-white/90 rounded-full p-2">
+                            <i class="fas fa-image text-gray-600"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3">
+                    <h3 class="font-semibold text-sm text-gray-800 mb-2">${post.title}</h3>
+                    <div class="flex items-center justify-between text-xs text-gray-500">
+                         <div class="flex items-center gap-2">
+                             <span>${post.author.displayName}</span>
+                         </div>
+                         <div class="flex items-center gap-1 ${isPostLiked(post.id) ? 'text-blue-600' : ''}">
+                             <i class="fa-solid fa-heart"></i>
+                             <span>${post.likes || 0}</span>
+                         </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加点击加载图片功能
+            const img = postEl.querySelector('.lazy-image');
+            img.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止触发卡片点击
+                loadImageForElement(img);
+            });
+            
+            postEl.addEventListener('click', () => showPostDetail(post));
+            
+            // 如果指定要立即加载图片，则加载
+            if (loadImage) {
+                setTimeout(() => loadImageForElement(img), 100);
+            }
+            
+            return postEl;
+        }
+
+        function loadImageForElement(imgElement) {
+            if (!imgElement.dataset.src || imgElement.dataset.loaded === 'true') return;
+            
+            const realImageUrl = imgElement.dataset.src;
+            imgElement.dataset.loaded = 'true';
+            
+            // 显示加载动画
+            imgElement.style.opacity = '0.6';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'absolute inset-0 flex items-center justify-center bg-gray-100/80';
+            loadingDiv.innerHTML = '<div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>';
+            imgElement.parentElement.appendChild(loadingDiv);
+            
+            // 预加载真实图片
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                imgElement.src = realImageUrl;
+                imgElement.style.opacity = '1';
+                loadingDiv.remove();
+                // 更新统计
+                updateImageStats();
+                // 更新 masonry 布局
+                if (masonry) {
+                    setTimeout(() => masonry.layout(), 100);
+                }
+            };
+            
+            tempImg.onerror = () => {
+                loadingDiv.remove();
+                imgElement.style.opacity = '1';
+                // 更新统计（即使加载失败也算作已处理）
+                updateImageStats();
+                // 保持占位符图片
+            };
+            
+            tempImg.src = realImageUrl;
+        }
+
+        let allPostsData = [];
+
+        function updateImageStats() {
+            const totalImages = allPostsData.length;
+            const loadedImages = grid.querySelectorAll('.lazy-image[data-loaded="true"]').length;
+            loadedImagesCountEl.textContent = loadedImages;
+            totalImagesCountEl.textContent = totalImages;
+            
+            // 显示或隐藏"加载全部图片"按钮
+            if (totalImages > 0 && loadedImages < totalImages) {
+                loadAllImagesBtn.classList.remove('hidden');
+            } else {
+                loadAllImagesBtn.classList.add('hidden');
+            }
+        }
+
+        let isInitialLoad = true;
+        let fakeProgressInterval;
+
+        function startFakeProgress() {
+            console.log('启动虚假进度条...'); // 调试信息
+            
+            // 清除任何现有的进度条定时器
+            if (fakeProgressInterval) {
+                clearInterval(fakeProgressInterval);
+                fakeProgressInterval = null;
+            }
+            
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const progressPercentage = document.getElementById('progress-percentage');
+            
+            // 检查元素是否存在
+            if (!progressBar || !progressText || !progressPercentage) {
+                console.error('进度条元素未找到:', { progressBar, progressText, progressPercentage });
+                // 如果元素不存在，直接完成加载
+                setTimeout(completeLoading, 1000);
+                return;
+            }
+            
+            console.log('进度条元素找到，开始更新进度...');
+            
+            let progress = 1; // 从1%开始
+            
+            // 定义不同阶段的提示文字
+            const stages = [
+                { threshold: 0, text: "正在连接心理社区..." },
+                { threshold: 10, text: "加载温暖故事数据..." },
+                { threshold: 25, text: "获取个性化推荐..." },
+                { threshold: 40, text: "准备治愈内容..." },
+                { threshold: 55, text: "优化阅读体验..." },
+                { threshold: 70, text: "同步用户偏好..." },
+                { threshold: 85, text: "最后的润色..." },
+                { threshold: 95, text: "马上就好..." }
+            ];
+            
+            function updateProgress() {
+                // 模拟真实的不均匀进度增长
+                let increment;
+                if (progress < 15) {
+                    increment = Math.random() * 1.5 + 0.8; // 开始较快
+                } else if (progress < 75) {
+                    increment = Math.random() * 1.2 + 0.6; // 中间稳定
+                } else if (progress < 92) {
+                    increment = Math.random() * 0.8 + 0.4; // 后期较慢
+                } else {
+                    increment = Math.random() * 0.5 + 0.2; // 最后很慢，增加真实感
+                }
+                
+                progress = Math.min(progress + increment, 100);
+                
+                // 更新进度条
+                progressBar.style.width = progress + '%';
+                progressPercentage.textContent = Math.floor(progress) + '%';
+                
+                // 更新提示文字
+                for (let i = stages.length - 1; i >= 0; i--) {
+                    if (progress >= stages[i].threshold) {
+                        progressText.textContent = stages[i].text;
+                        break;
+                    }
+                }
+                
+                // 每隔5%输出一次调试信息
+                if (Math.floor(progress) % 5 === 0 && Math.floor(progress) !== Math.floor(progress - increment)) {
+                    console.log(`进度更新: ${Math.floor(progress)}%`);
+                }
+                
+                // 如果进度达到100%，完成加载
+                if (progress >= 100) {
+                    clearInterval(fakeProgressInterval);
+                    fakeProgressInterval = null;
+                    progressText.textContent = "加载完成！";
+                    console.log('进度条完成，准备显示内容...');
+                    setTimeout(() => {
+                        completeLoading();
+                    }, 800);
+                }
+            }
+            
+            // 初始设置
+            progressBar.style.width = '1%';
+            progressPercentage.textContent = '1%';
+            progressText.textContent = stages[0].text;
+            
+            // 每150ms更新一次，总共约20秒
+            fakeProgressInterval = setInterval(updateProgress, 150);
+        }
+
+        function completeLoading() {
+            // 清除进度条定时器
+            if (fakeProgressInterval) {
+                clearInterval(fakeProgressInterval);
+                fakeProgressInterval = null;
+            }
+            
+            // 添加淡出效果
+            loadingIndicator.style.transition = 'opacity 0.5s ease-out';
+            loadingIndicator.style.opacity = '0';
+            
+            setTimeout(() => {
+                loadingIndicator.classList.add('hidden');
+                loadingIndicator.style.opacity = '1'; // 重置透明度
+                
+                // 渲染最终内容
+                filterAndRenderPosts();
+                
+                // 显示欢迎提示
+                setTimeout(() => {
+                    showWelcomeToast();
+                }, 800);
+                
+            }, 500);
+        }
+
+        function showWelcomeToast() {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+            toast.innerHTML = '<i class="fas fa-heart mr-2"></i>欢迎来到心理社区 💚';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 100);
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (document.body.contains(toast)) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        function renderPosts(posts) {
+            allPostsData = [...mockPosts, ...posts];
+            grid.innerHTML = '';
+            
+            // 立即显示所有文字内容
+            allPostsData.forEach(post => {
+                const postEl = createPostElement(post, false); // 不立即加载图片
+                grid.appendChild(postEl);
+            });
+            
+            // 更新统计
+            updateImageStats();
+            
+            // 如果进度条正在运行，只准备内容但不显示
+            if (fakeProgressInterval) {
+                // 初始化masonry但不显示内容
+                if (!masonry) {
+                    initMasonry();
+                } else {
+                    masonry.reloadItems();
+                    masonry.layout();
+                }
+                return;
+            }
+            
+            // 进度条已完成或非首次加载，直接显示
+            setTimeout(() => {
+                if (!masonry) {
+                    initMasonry();
+                } else {
+                    masonry.reloadItems();
+                    masonry.layout();
+                }
+                
+                loadingIndicator.classList.add('hidden');
+                
+                // 内容淡入效果
+                grid.style.transition = 'opacity 0.6s ease-in';
+                grid.classList.remove('opacity-0');
+                
+                // 显示底部统计信息
+                const imageStats = document.getElementById('image-stats');
+                setTimeout(() => {
+                    imageStats.classList.remove('opacity-0');
+                }, 400);
+                
+                loadImagesInViewport();
+            }, 100);
+        }
+
+        // 加载当前视窗内的图片
+        function loadImagesInViewport() {
+            const viewportHeight = window.innerHeight;
+            const images = grid.querySelectorAll('.lazy-image[data-src]:not([data-loaded="true"])');
+            
+            images.forEach(img => {
+                const rect = img.getBoundingClientRect();
+                // 如果图片在视窗内或即将进入视窗
+                if (rect.top < viewportHeight + 200) {
+                    loadImageForElement(img);
+                }
+            });
+        }
+
+
+
+
+
+        // 添加 Intersection Observer 来优化图片加载
+        let imageObserver;
+        if ('IntersectionObserver' in window) {
+            imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.removeAttribute('data-src');
+                            imageObserver.unobserve(img);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px' // 提前50px开始加载
+            });
+        }
+        
+        // 立即启动进度条（不等Firebase和任何异步操作）
+        console.log('页面开始加载，准备启动进度条...');
+        if (isInitialLoad) {
+            // 稍微延迟一下确保DOM元素已准备好
+            setTimeout(() => {
+                startFakeProgress();
+                isInitialLoad = false;
+            }, 100);
+        }
+        
+        const postsCol = collection(db, 'posts');
+        let allRealtimePosts = [];
+        
+        // 修改onSnapshot，保存所有实时帖子
+        onSnapshot(postsCol, (snapshot) => {
+            const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            posts.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            allRealtimePosts = posts;
+            
+            // 如果进度条还在运行，不要立即渲染
+            if (fakeProgressInterval) {
+                // 将数据保存，等进度条完成后再渲染
+                return;
+            }
+            
+            filterAndRenderPosts();
+        });
+        // 搜索过滤函数
+        function filterAndRenderPosts() {
+            const keyword = document.getElementById('search-input').value.trim().toLowerCase();
+            let filtered = allRealtimePosts;
+            if (keyword) {
+                filtered = allRealtimePosts.filter(post => {
+                    return (
+                        (post.title && post.title.toLowerCase().includes(keyword)) ||
+                        (post.content && post.content.toLowerCase().includes(keyword)) ||
+                        (post.author && post.author.displayName && post.author.displayName.toLowerCase().includes(keyword))
+                    );
+                });
+            }
+            renderPosts(filtered);
+        }
+        // 监听搜索输入
+        document.getElementById('search-input').addEventListener('input', filterAndRenderPosts);
+        
+        // 添加滚动监听器实现图片懒加载
+        window.addEventListener('scroll', () => {
+            loadImagesInViewport();
+        });
+
+        // 加载全部图片按钮点击事件
+        loadAllImagesBtn.addEventListener('click', () => {
+            const unloadedImages = grid.querySelectorAll('.lazy-image[data-src]:not([data-loaded="true"])');
+            unloadedImages.forEach(img => {
+                loadImageForElement(img);
+            });
+            loadAllImagesBtn.textContent = '加载中...';
+            loadAllImagesBtn.disabled = true;
+            
+            // 等待一段时间后恢复按钮（如果还有未加载的图片）
+            setTimeout(() => {
+                loadAllImagesBtn.textContent = '加载全部图片';
+                loadAllImagesBtn.disabled = false;
+                updateImageStats(); // 重新检查统计以决定是否隐藏按钮
+            }, 2000);
+        });
+        
+        let imageFile = null;
+        function openCreateModal() {
+            createModal.classList.remove('hidden');
+            createModal.classList.add('flex');
+            setTimeout(() => createModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0'), 10);
+        }
+        function closeCreateModal() {
+            createModal.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                createModal.classList.add('hidden');
+                createModal.classList.remove('flex');
+                createForm.reset();
+                imageFile = null;
+                imagePreview.classList.add('hidden');
+                fileInputWrapper.classList.remove('hidden');
+                submitPostBtn.disabled = true;
+                aiSuggestionBtn.disabled = true;
+            }, 300);
+        }
+        
+        createPostBtn.addEventListener('click', openCreateModal);
+        closeCreateModalBtn.addEventListener('click', closeCreateModal);
+        createModal.addEventListener('click', (e) => e.target === createModal && closeCreateModal());
+        
+        fileInputWrapper.addEventListener('dragover', (e) => { e.preventDefault(); fileInputWrapper.classList.add('dragover'); });
+        fileInputWrapper.addEventListener('dragleave', () => fileInputWrapper.classList.remove('dragover'));
+        fileInputWrapper.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileInputWrapper.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInputWrapper.addEventListener('click', () => imageUpload.click());
+        imageUpload.addEventListener('change', (e) => e.target.files.length > 0 && handleFile(e.target.files[0]));
+
+        function handleFile(file) {
+            if (file && file.type.startsWith('image/')) {
+                imageFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    fileInputWrapper.classList.add('hidden');
+                    imagePreview.classList.remove('hidden');
+                    aiSuggestionBtn.disabled = false;
+                    checkFormValidity();
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        createForm.addEventListener('input', checkFormValidity);
+        function checkFormValidity() {
+            const title = document.getElementById('post-title').value;
+            const content = document.getElementById('post-content').value;
+            const nickname = document.getElementById('post-nickname').value;
+            submitPostBtn.disabled = !(title && content && nickname && imageFile);
+        }
+        
+        aiSuggestionBtn.addEventListener('click', async () => {
+            if (!imageFile) return;
+
+            const aiBtnIcon = document.getElementById('ai-btn-icon');
+            const aiBtnText = document.getElementById('ai-btn-text');
+            const aiBtnLoader = document.getElementById('ai-btn-loader');
+            
+            aiBtnIcon.classList.add('hidden');
+            aiBtnLoader.classList.remove('hidden');
+            aiBtnText.textContent = '生成中...';
+            aiSuggestionBtn.disabled = true;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(imageFile);
+            reader.onloadend = async () => {
+                const base64String = reader.result.split(',')[1];
+                const prompt = "你是一位富有创造力的社交媒体专家。请分析这张图片，并以JSON格式返回一个建议的标题（title），一段吸引人的描述（content），以及一个包含3个相关标签的数组（tags）。风格要文艺、简短、有吸引力。返回的JSON必须严格遵守格式，不要包含任何markdown标记。";
+                const resultText = await callDeepSeekAPI(prompt, base64String);
+
+                if (resultText) {
+                    try {
+                        const cleanedText = resultText.replace(/```json\n?|\n?```/g, '');
+                        const suggestions = JSON.parse(cleanedText);
+                        document.getElementById('post-title').value = suggestions.title;
+                        document.getElementById('post-content').value = suggestions.content;
+                        document.getElementById('post-tags').value = suggestions.tags.join(', ');
+                        checkFormValidity();
+                    } catch (e) {
+                        console.error("Failed to parse AI response:", e, "Raw text:", resultText);
+                        alert("AI返回的格式有误，请手动填写或重试。");
+                    }
+                }
+
+                aiBtnIcon.classList.remove('hidden');
+                aiBtnLoader.classList.add('hidden');
+                aiBtnText.textContent = 'AI 生成建议';
+                aiSuggestionBtn.disabled = false;
+            };
+        });
+
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (submitPostBtn.disabled) return;
+            submitSpinner.classList.remove('hidden');
+            submitBtnText.classList.add('hidden');
+            submitPostBtn.disabled = true;
+
+            try {
+                const storageRef = ref(storage, `posts/${Date.now()}_${imageFile.name}`);
+                const snapshot = await uploadBytes(storageRef, imageFile);
+                const imageUrl = await getDownloadURL(snapshot.ref);
+                const nickname = document.getElementById('post-nickname').value;
+                const title = document.getElementById('post-title').value;
+                const content = document.getElementById('post-content').value;
+                const tagsRaw = document.getElementById('post-tags').value;
+                const tags = tagsRaw.split(',').map(tag => tag.trim()).filter(Boolean);
+                await addDoc(postsCol, { title, content, tags, imageUrl, author: { displayName: nickname }, likes: 0, createdAt: new Date() });
+                closeCreateModal();
+            } catch (error) {
+                console.error("Error creating post: ", error);
+                alert("创建失败，请稍后再试。");
+            } finally {
+                submitSpinner.classList.add('hidden');
+                submitBtnText.classList.remove('hidden');
+            }
+        });
+        
+        function showPostDetail(post) {
+            const liked = isPostLiked(post.id);
+            detailContent.innerHTML = `
+                <div class="w-full max-w-4xl h-full lg:h-auto lg:max-h-[90vh] bg-white flex flex-col lg:flex-row rounded-none lg:rounded-2xl overflow-hidden shadow-2xl">
+                    <div class="w-full lg:w-1/2 bg-gray-100 flex items-center justify-center">
+                         <img src="${post.imageUrl}" alt="${post.title}" class="w-auto h-auto max-w-full max-h-full object-contain">
+                    </div>
+                    <div class="w-full lg:w-1/2 p-6 flex flex-col">
+                        <div class="flex items-center gap-3 mb-4">
+                             <div>
+                                 <p class="font-bold text-gray-800">${post.author.displayName}</p>
+                                 <p class="text-xs text-gray-500">${post.createdAt ? post.createdAt.toDate().toLocaleDateString() : '刚刚'}</p>
+                             </div>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-900 mb-2">${post.title}</h2>
+                        <div class="text-gray-600 text-sm leading-relaxed overflow-y-auto flex-1 mb-4">
+                            <p>${post.content.replace(/\n/g, '<br>')}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${post.tags ? post.tags.map(tag => `<span class="tag text-xs px-2 py-1 rounded">#${tag}</span>`).join('') : ''}
+                        </div>
+                        <div class="mt-auto border-t border-gray-200 pt-4 flex items-center justify-between">
+                            <div class="flex items-center gap-4 text-xl text-gray-500">
+                                <button data-id="${post.id}" class="like-btn ${liked ? 'liked' : ''} transition-transform transform hover:scale-110">
+                                    <i class="fas fa-heart"></i>
+                                    <span class="like-count text-sm ml-1">${post.likes || 0}</span>
+                                </button>
+                                <button data-post-info='${JSON.stringify({title: post.title, content: post.content}).replace(/'/g, "&apos;")}' class="ai-comment-btn transition-transform transform hover:scale-110">
+                                    <i class="fas fa-magic-sparkles"></i>
+                                </button>
+                                <button><i class="far fa-bookmark"></i></button>
+                            </div>
+                            <button class="text-xl text-gray-500"><i class="fas fa-share-alt"></i></button>
+                        </div>
+                         <div id="ai-comment-area" class="mt-4 hidden">
+                            <p class="text-sm font-bold text-gray-700 mb-2">AI 评论建议:</p>
+                            <div class="bg-gray-100 p-3 rounded-lg text-sm text-gray-600"></div>
+                         </div>
+                    </div>
+                </div>
+            `;
+            detailModal.classList.remove('hidden');
+            detailModal.classList.add('flex');
+            detailModal.querySelector('.like-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleLike(post.id); });
+            detailModal.querySelector('.ai-comment-btn').addEventListener('click', handleAiCommentGeneration);
+        }
+        
+        async function handleAiCommentGeneration(e) {
+            const button = e.currentTarget;
+            const postInfo = JSON.parse(button.dataset.postInfo.replace(/&apos;/g, "'"));
+            const commentArea = detailModal.querySelector('#ai-comment-area');
+            const commentContent = commentArea.querySelector('div');
+            button.disabled = true;
+            commentContent.textContent = "AI 正在思考中...";
+            commentArea.classList.remove('hidden');
+            const prompt = `你是一位风趣幽默、善于发现细节的网友。请针对以下帖子的标题和内容，写一条友善、有趣、具体的评论。不要使用模板化的语言，要像是真人会说的话。评论内容要简短。
+            标题: "${postInfo.title}"
+            内容: "${postInfo.content}"`;
+            const resultText = await callDeepSeekAPI(prompt);
+            if(resultText) commentContent.textContent = resultText;
+            button.disabled = false;
+        }
+        
+        function closeDetailModal() {
+            detailModal.classList.add('hidden');
+            detailModal.classList.remove('flex');
+            detailContent.innerHTML = '';
+        }
+        closeDetailModalBtn.addEventListener('click', closeDetailModal);
+        detailModal.addEventListener('click', (e) => e.target === detailModal && closeDetailModal());
+        
+        async function toggleLike(postId) {
+            if (postId.startsWith('mock')) {
+                 alert("演示帖子无法点赞哦~");
+                 return;
+            }
+            const postRef = doc(db, 'posts', postId);
+            const likeBtn = detailModal.querySelector(`.like-btn[data-id="${postId}"]`);
+            const likeCountEl = likeBtn.querySelector('.like-count');
+            const wasLiked = isPostLiked(postId);
+            const incrementValue = wasLiked ? -1 : 1;
+            likeBtn.classList.toggle('liked', !wasLiked);
+            likeCountEl.textContent = parseInt(likeCountEl.textContent) + incrementValue;
+            toggleLocalLike(postId);
+            try {
+                await updateDoc(postRef, { likes: increment(incrementValue) });
+            } catch (error) {
+                console.error("Failed to update likes:", error);
+                likeBtn.classList.toggle('liked', wasLiked);
+                likeCountEl.textContent = parseInt(likeCountEl.textContent) - incrementValue;
+                toggleLocalLike(postId);
+                alert("点赞失败，请检查网络连接。");
+            }
+        }
+    </script>
+    <!-- 右上角返回按钮 -->
+    <button
+      id="back-btn"
+      class="fixed top-6 right-8 bg-white border border-gray-200 shadow-lg rounded-full px-5 py-2 text-blue-600 font-semibold hover:bg-blue-50 transition-all z-50 flex items-center gap-2"
+      onclick="window.history.back()"
+    >
+      <i class="fas fa-arrow-left"></i>
+      返回
+    </button>
+</body>
+</html>
